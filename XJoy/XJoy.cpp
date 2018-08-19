@@ -9,6 +9,12 @@ const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
 const unsigned short JOYCON_R = 8199; // 0x2007
 
+PVIGEM_CLIENT client = vigem_alloc();
+hid_device *left_joycon = NULL;
+hid_device *right_joycon = NULL;
+PVIGEM_TARGET target;
+XUSB_REPORT report;
+
 std::string vigem_error_to_string(VIGEM_ERROR err) {
   switch (err) {
     case VIGEM_ERROR_NONE:
@@ -41,10 +47,7 @@ std::string vigem_error_to_string(VIGEM_ERROR err) {
   return "none";
 }
 
-int main() {
-  std::cout << "XJoy v0.1.0" << std::endl << std::endl;
-  PVIGEM_CLIENT client = vigem_alloc();
-
+void initialize_joycons() {
   std::cout << "initializing Joy-Cons..." << std::endl;
   hid_init();
   std::cout << " => initialized hidapi library" << std::endl;
@@ -64,7 +67,7 @@ int main() {
     vigem_free(client);
     exit(1);
   }
-  hid_device *left_joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
+  left_joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
   if(left_joycon != NULL) std::cout << " => successfully connected to left Joy-Con" << std::endl;
   else {
     std::cout << " => could not connect to left Joy-Con" << std::endl;
@@ -72,17 +75,18 @@ int main() {
     vigem_free(client);
     exit(1);
   }
-  hid_device *right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
-  if (left_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
+  right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
+  if(left_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
   else {
     std::cout << " => could not connect to right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
     exit(1);
   }
-
   std::cout << std::endl;
+}
 
+void initialize_xbox() {
   std::cout << "initializing emulated Xbox 360 controller..." << std::endl;
   VIGEM_ERROR err = vigem_connect(client);
   if (err == VIGEM_ERROR_NONE) {
@@ -93,12 +97,27 @@ int main() {
     vigem_free(client);
     exit(1);
   }
-
-  PVIGEM_TARGET target = vigem_target_x360_alloc();
+  target = vigem_target_x360_alloc();
   vigem_target_add(client, target);
   std::cout << " => added target Xbox 360 Controller" << std::endl;
+  std::cout << std::endl;
+}
 
-  XUSB_REPORT report;
+void disconnect_exit() {
+  hid_exit();
+  vigem_target_remove(client, target);
+  vigem_target_free(target);
+  vigem_disconnect(client);
+  vigem_free(client);
+  exit(0);
+}
+
+int main() {
+  std::cout << "XJoy v0.1.0" << std::endl << std::endl;
+
+  initialize_joycons();
+  initialize_xbox();
+
   XUSB_REPORT_INIT(&report);
   report.wButtons = _XUSB_BUTTON::XUSB_GAMEPAD_A | _XUSB_BUTTON::XUSB_GAMEPAD_B;
 
@@ -106,9 +125,5 @@ int main() {
 
   Sleep(10000);
   std::cout << "disconnecting and exiting..." << std::endl;
-  hid_exit();
-  vigem_target_remove(client, target);
-  vigem_target_free(target);
-  vigem_disconnect(client);
-  vigem_free(client);
+  disconnect_exit();
 }
