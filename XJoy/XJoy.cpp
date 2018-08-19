@@ -8,12 +8,15 @@
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
 const unsigned short JOYCON_R = 8199; // 0x2007
+#define DATA_BUFFER_SIZE 6
 
 PVIGEM_CLIENT client = vigem_alloc();
 hid_device *left_joycon = NULL;
 hid_device *right_joycon = NULL;
 PVIGEM_TARGET target;
 XUSB_REPORT report;
+unsigned char data[DATA_BUFFER_SIZE];
+int res;
 
 std::string vigem_error_to_string(VIGEM_ERROR err) {
   switch (err) {
@@ -117,6 +120,14 @@ int main() {
 
   initialize_joycons();
   initialize_xbox();
+
+  for(;;) {
+    hid_read(left_joycon, data, DATA_BUFFER_SIZE);
+    for (int i = 0; i < DATA_BUFFER_SIZE; i++) {
+      std::cout << (unsigned int)data[i];
+    }
+    std::cout << std::endl;
+  }
 
   XUSB_REPORT_INIT(&report);
   report.wButtons = _XUSB_BUTTON::XUSB_GAMEPAD_A | _XUSB_BUTTON::XUSB_GAMEPAD_B;
