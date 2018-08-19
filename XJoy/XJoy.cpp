@@ -2,7 +2,6 @@
 #include "Windows.h"
 #include "ViGEmClient.h"
 #include "hidapi.h"
-#include <assert.h>
 #include <iostream>
 #include <string>
 
@@ -68,7 +67,7 @@ enum JOYCON_BUTTON {
 };
 
 std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) {
-  switch (region) {
+  switch(region) {
     case LEFT_DPAD:
       switch(button) {
         case L_DPAD_LEFT: return "L_DPAD_LEFT";
@@ -130,7 +129,7 @@ std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) 
 }
 
 std::string vigem_error_to_string(VIGEM_ERROR err) {
-  switch (err) {
+  switch(err) {
     case VIGEM_ERROR_NONE: return "none";
     case VIGEM_ERROR_ALREADY_CONNECTED: return "already connected";
     case VIGEM_ERROR_BUS_ACCESS_FAILED: return "bus access failed";
@@ -190,7 +189,7 @@ void initialize_joycons() {
 void initialize_xbox() {
   std::cout << "initializing emulated Xbox 360 controller..." << std::endl;
   VIGEM_ERROR err = vigem_connect(client);
-  if (err == VIGEM_ERROR_NONE) {
+  if(err == VIGEM_ERROR_NONE) {
     std::cout << " => connected successfully" << std::endl;
   } else {
     std::cout << "connection error: " << vigem_error_to_string(err) << std::endl;
