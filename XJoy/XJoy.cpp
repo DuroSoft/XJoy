@@ -2,6 +2,7 @@
 #include "Windows.h"
 #include "ViGEmClient.h"
 #include "hidapi.h"
+#include <assert.h>
 #include <iostream>
 #include <string>
 
@@ -17,6 +18,45 @@ PVIGEM_TARGET target;
 XUSB_REPORT report;
 unsigned char data[DATA_BUFFER_SIZE];
 int res;
+
+enum JOYCON_BUTTON {
+  L_DPAD_LEFT = 1,            // left dpad
+  L_DPAD_DOWN = 2,
+  L_DPAD_UP = 4,
+  L_DPAD_RIGHT = 8,
+  L_ANALOG_LEFT = 4,          // left 8-way analog
+  L_ANALOG_UP_LEFT = 5,
+  L_ANALOG_UP = 6,
+  L_ANALOG_UP_RIGHT = 7,
+  L_ANALOG_RIGHT = 0,
+  L_ANALOG_DOWN_RIGHT = 1,
+  L_ANALOG_DOWN = 2,
+  L_ANALOG_DOWN_LEFT = 3,
+  L_ANALOG_NONE = 8,
+  L_SHOULDER = 64,            // left aux area
+  L_TRIGGER = 128,
+  L_CAPTURE = 32,
+  L_MINUS = 1,
+  L_STICK = 4,
+  R_BUT_A = 1,                // right buttons area
+  R_BUT_B = 4,
+  R_BUT_Y = 8,
+  R_BUT_X = 2,
+  R_SHOULDER = 64,            // right aux area
+  R_TRIGGER = 128,
+  R_HOME = 16,
+  R_PLUS = 2,
+  R_STICK = 8,
+  R_ANALOG_LEFT = 0,          // right 8-way analog
+  R_ANALOG_UP_LEFT = 1,
+  R_ANALOG_UP = 2,
+  R_ANALOG_UP_RIGHT = 3,
+  R_ANALOG_RIGHT = 4,
+  R_ANALOG_DOWN_RIGHT = 5,
+  R_ANALOG_DOWN = 6,
+  R_ANALOG_DOWN_LEFT = 7,
+  R_ANALOG_NONE = 8
+};
 
 std::string vigem_error_to_string(VIGEM_ERROR err) {
   switch (err) {
@@ -115,6 +155,14 @@ void disconnect_exit() {
   exit(0);
 }
 
+void process_left_joycon() {
+  // TODO
+}
+
+void process_right_joycon() {
+  // TODO
+}
+
 int main() {
   std::cout << "XJoy v0.1.0" << std::endl << std::endl;
 
@@ -123,10 +171,8 @@ int main() {
 
   for(;;) {
     hid_read(left_joycon, data, DATA_BUFFER_SIZE);
-    for (int i = 0; i < DATA_BUFFER_SIZE; i++) {
-      std::cout << (unsigned int)data[i];
-    }
-    std::cout << std::endl;
+    process_left_joycon();
+    process_right_joycon();
   }
 
   XUSB_REPORT_INIT(&report);
