@@ -19,6 +19,15 @@ XUSB_REPORT report;
 unsigned char data[DATA_BUFFER_SIZE];
 int res;
 
+enum JOYCON_REGION {
+  LEFT_DPAD,
+  LEFT_ANALOG,
+  LEFT_AUX,
+  RIGHT_BUTTONS,
+  RIGHT_AUX,
+  RIGHT_ANALOG
+};
+
 enum JOYCON_BUTTON {
   L_DPAD_LEFT = 1,            // left dpad
   L_DPAD_DOWN = 2,
@@ -58,36 +67,85 @@ enum JOYCON_BUTTON {
   R_ANALOG_NONE = 8
 };
 
+std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) {
+  switch (region) {
+    case LEFT_DPAD:
+      switch(button) {
+        case L_DPAD_LEFT: return "L_DPAD_LEFT";
+        case L_DPAD_DOWN: return "L_DPAD_DOWN";
+        case L_DPAD_UP: return "L_DPAD_UP";
+        case L_DPAD_RIGHT: return "L_DPAD_RIGHT";
+      }
+    case LEFT_ANALOG:
+      switch(button) {
+        case L_ANALOG_LEFT: return "L_ANALOG_LEFT";
+        case L_ANALOG_UP_LEFT: return "L_ANALOG_UP_LEFT";
+        case L_ANALOG_UP: return "L_ANALOG_UP";
+        case L_ANALOG_UP_RIGHT: return "L_ANALOG_UP_RIGHT";
+        case L_ANALOG_RIGHT: return "L_ANALOG_RIGHT";
+        case L_ANALOG_DOWN_RIGHT: return "L_ANALOG_DOWN_RIGHT";
+        case L_ANALOG_DOWN: return "L_ANALOG_DOWN";
+        case L_ANALOG_DOWN_LEFT: return "L_ANALOG_DOWN_LEFT";
+        case L_ANALOG_NONE: return "L_ANALOG_NONE";
+      }
+    case LEFT_AUX:
+      switch(button) {
+        case L_SHOULDER: return "L_SHOULDER";
+        case L_TRIGGER: return "L_TRIGGER";
+        case L_CAPTURE: return "L_CAPTURE";
+        case L_MINUS: return "L_MINUS";
+        case L_STICK: return "L_STICK";
+      }
+    case RIGHT_BUTTONS:
+      switch(button) {
+        case R_BUT_A: return "R_BUT_A";
+        case R_BUT_B: return "R_BUT_B";
+        case R_BUT_Y: return "R_BUT_Y";
+        case R_BUT_X: return "R_BUT_X";
+      }
+    case RIGHT_AUX:
+      switch(button) {
+        case R_SHOULDER: return "R_SHOULDER";
+        case R_TRIGGER: return "R_TRIGGER";
+        case R_HOME: return "R_HOME";
+        case R_PLUS: return "R_PLUS";
+        case R_STICK: return "R_STICK";
+      }
+    case RIGHT_ANALOG:
+      switch(button) {
+        case R_ANALOG_LEFT: return "R_ANALOG_LEFT";
+        case R_ANALOG_UP_LEFT: return "R_ANALOG_UP_LEFT";
+        case R_ANALOG_UP: return "R_ANALOG_UP";
+        case R_ANALOG_UP_RIGHT: return "R_ANALOG_UP_RIGHT";
+        case R_ANALOG_RIGHT: return "R_ANALOG_RIGHT";
+        case R_ANALOG_DOWN_RIGHT: return "R_ANALOG_DOWN_RIGHT";
+        case R_ANALOG_DOWN: return "R_ANALOG_DOWN";
+        case R_ANALOG_DOWN_LEFT: return "R_ANALOG_DOWN_LEFT";
+        case R_ANALOG_NONE: return "R_ANALOG_NONE";
+      }
+    default:
+      throw "invalid region";
+  }
+  throw "invalid button";
+}
+
 std::string vigem_error_to_string(VIGEM_ERROR err) {
   switch (err) {
-    case VIGEM_ERROR_NONE:
-      return "none";
-    case VIGEM_ERROR_ALREADY_CONNECTED:
-      return "already connected";
-    case VIGEM_ERROR_BUS_ACCESS_FAILED:
-      return "bus access failed";
-    case VIGEM_ERROR_BUS_ALREADY_CONNECTED:
-      return "bus already connected";
-    case VIGEM_ERROR_BUS_NOT_FOUND:
-      return "bus not found";
-    case VIGEM_ERROR_BUS_VERSION_MISMATCH:
-      return "bus version mismatch";
-    case VIGEM_ERROR_CALLBACK_ALREADY_REGISTERED:
-      return "callback already registered";
-    case VIGEM_ERROR_CALLBACK_NOT_FOUND:
-      return "callback not found";
-    case VIGEM_ERROR_INVALID_TARGET:
-      return "invalid target";
-    case VIGEM_ERROR_NO_FREE_SLOT:
-      return "no free slot";
-    case VIGEM_ERROR_REMOVAL_FAILED:
-      return "removal failed";
-    case VIGEM_ERROR_TARGET_NOT_PLUGGED_IN:
-      return "target not plugged in";
-    case VIGEM_ERROR_TARGET_UNINITIALIZED:
-      return "target uninitialized";
+    case VIGEM_ERROR_NONE: return "none";
+    case VIGEM_ERROR_ALREADY_CONNECTED: return "already connected";
+    case VIGEM_ERROR_BUS_ACCESS_FAILED: return "bus access failed";
+    case VIGEM_ERROR_BUS_ALREADY_CONNECTED: return "bus already connected";
+    case VIGEM_ERROR_BUS_NOT_FOUND: return "bus not found";
+    case VIGEM_ERROR_BUS_VERSION_MISMATCH: return "bus version mismatch";
+    case VIGEM_ERROR_CALLBACK_ALREADY_REGISTERED: return "callback already registered";
+    case VIGEM_ERROR_CALLBACK_NOT_FOUND: return "callback not found";
+    case VIGEM_ERROR_INVALID_TARGET: return "invalid target";
+    case VIGEM_ERROR_NO_FREE_SLOT: return "no free slot";
+    case VIGEM_ERROR_REMOVAL_FAILED: return "removal failed";
+    case VIGEM_ERROR_TARGET_NOT_PLUGGED_IN: return "target not plugged in";
+    case VIGEM_ERROR_TARGET_UNINITIALIZED: return "target uninitialized";
+    default: return "none";
   }
-  return "none";
 }
 
 void initialize_joycons() {
@@ -155,8 +213,80 @@ void disconnect_exit() {
   exit(0);
 }
 
+void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
+  std::cout << "joycon: " << joycon_button_to_string(region, button) << std::endl;
+}
+
+void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a) {
+  process_button(region, a);
+}
+
+void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b) {
+  process_button(region, a);
+  process_button(region, b);
+}
+
+void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b, JOYCON_BUTTON c) {
+  process_button(region, a);
+  process_button(region, b);
+  process_button(region, c);
+}
+
+void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b, JOYCON_BUTTON c, JOYCON_BUTTON d) {
+  process_button(region, a);
+  process_button(region, b);
+  process_button(region, c);
+  process_button(region, d);
+}
+
 void process_left_joycon() {
-  // TODO
+  switch(data[1]) { // DPAD
+    case L_DPAD_DOWN:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN);
+      break;
+    case L_DPAD_UP:
+      process_buttons(LEFT_DPAD, L_DPAD_UP);
+      break;
+    case L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_LEFT:
+      process_buttons(LEFT_DPAD, L_DPAD_LEFT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_LEFT:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_UP:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_UP);
+      break;
+    case L_DPAD_LEFT + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_LEFT, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_LEFT + L_DPAD_UP:
+      process_buttons(LEFT_DPAD, L_DPAD_LEFT, L_DPAD_UP);
+      break;
+    case L_DPAD_UP + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_UP + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_UP, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_UP:
+      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_UP);
+      break;
+    case L_DPAD_UP + L_DPAD_LEFT + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_LEFT, L_DPAD_RIGHT);
+      break;
+    case L_DPAD_UP + L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_RIGHT:
+      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_RIGHT);
+      break;
+  }
 }
 
 void process_right_joycon() {
