@@ -8,6 +8,7 @@
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
 const unsigned short JOYCON_R = 8199; // 0x2007
+const XUSB_REPORT blank_report;
 #define DATA_BUFFER_SIZE 6
 
 PVIGEM_CLIENT client = vigem_alloc();
@@ -214,6 +215,18 @@ void disconnect_exit() {
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
   std::cout << "joycon: " << joycon_button_to_string(region, button) << std::endl;
+  USHORT xbox_button = 0;
+  switch(region) {
+    case LEFT_DPAD:
+      switch(button) {
+        case L_DPAD_UP: xbox_button = XUSB_GAMEPAD_DPAD_UP; break;
+        case L_DPAD_DOWN: xbox_button = XUSB_GAMEPAD_DPAD_DOWN; break;
+        case L_DPAD_LEFT: xbox_button = XUSB_GAMEPAD_DPAD_LEFT; break;
+        case L_DPAD_RIGHT: xbox_button = XUSB_GAMEPAD_DPAD_RIGHT; break;
+      }
+      break;
+  }
+  report.wButtons = report.wButtons | xbox_button;
 }
 
 void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a) {
@@ -299,15 +312,13 @@ int main() {
   initialize_xbox();
 
   for(;;) {
+    report = blank_report;
+    XUSB_REPORT_INIT(&report);
     hid_read(left_joycon, data, DATA_BUFFER_SIZE);
     process_left_joycon();
     process_right_joycon();
+    vigem_target_x360_update(client, target, report);
   }
-
-  XUSB_REPORT_INIT(&report);
-  report.wButtons = _XUSB_BUTTON::XUSB_GAMEPAD_A | _XUSB_BUTTON::XUSB_GAMEPAD_B;
-
-  vigem_target_x360_update(client, target, report);
 
   Sleep(10000);
   std::cout << "disconnecting and exiting..." << std::endl;
