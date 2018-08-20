@@ -8,6 +8,10 @@
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
 const unsigned short JOYCON_R = 8199; // 0x2007
+const int XBOX_ANALOG_MIN = -32768;
+const int XBOX_ANALOG_MAX = 32767;
+const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
+const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 const XUSB_REPORT blank_report;
 #define DATA_BUFFER_SIZE 6
 
@@ -214,7 +218,7 @@ void disconnect_exit() {
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
-  std::cout << "joycon: " << joycon_button_to_string(region, button) << std::endl;
+  std::cout << joycon_button_to_string(region, button) << " ";
   USHORT xbox_button = 0;
   switch(region) {
     case LEFT_DPAD:
@@ -223,6 +227,42 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         case L_DPAD_DOWN: xbox_button = XUSB_GAMEPAD_DPAD_DOWN; break;
         case L_DPAD_LEFT: xbox_button = XUSB_GAMEPAD_DPAD_LEFT; break;
         case L_DPAD_RIGHT: xbox_button = XUSB_GAMEPAD_DPAD_RIGHT; break;
+      }
+      break;
+    case LEFT_ANALOG:
+      switch (button) {
+        case L_ANALOG_DOWN:
+          report.sThumbLX = 0;
+          report.sThumbLY = XBOX_ANALOG_MIN;
+          break;
+        case L_ANALOG_UP:
+          report.sThumbLX = 0;
+          report.sThumbLY = XBOX_ANALOG_MAX;
+          break;
+        case L_ANALOG_LEFT:
+          report.sThumbLX = XBOX_ANALOG_MIN;
+          report.sThumbLY = 0;
+          break;
+        case L_ANALOG_RIGHT:
+          report.sThumbLX = XBOX_ANALOG_MAX;
+          report.sThumbLY = 0;
+          break;
+        case L_ANALOG_DOWN_LEFT:
+          report.sThumbLX = XBOX_ANALOG_DIAG_MIN;
+          report.sThumbLY = XBOX_ANALOG_DIAG_MIN;
+          break;
+        case L_ANALOG_DOWN_RIGHT:
+          report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
+          report.sThumbLY = XBOX_ANALOG_DIAG_MIN;
+          break;
+        case L_ANALOG_UP_LEFT:
+          report.sThumbLX = XBOX_ANALOG_DIAG_MIN;
+          report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
+          break;
+        case L_ANALOG_UP_RIGHT:
+          report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
+          report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
+          break;
       }
       break;
   }
@@ -299,6 +339,7 @@ void process_left_joycon() {
       process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_RIGHT);
       break;
   }
+  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
 }
 
 void process_right_joycon() {
@@ -318,6 +359,7 @@ int main() {
     process_left_joycon();
     process_right_joycon();
     vigem_target_x360_update(client, target, report);
+    std::cout << std::endl;
   }
 
   Sleep(10000);
