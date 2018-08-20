@@ -230,7 +230,7 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
       }
       break;
     case LEFT_ANALOG:
-      switch (button) {
+      switch(button) {
         case L_ANALOG_DOWN:
           report.sThumbLX = 0;
           report.sThumbLY = XBOX_ANALOG_MIN;
@@ -262,6 +262,25 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         case L_ANALOG_UP_RIGHT:
           report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
           report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
+          break;
+      }
+      break;
+    case LEFT_AUX:
+      switch(button) {
+        case L_SHOULDER:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_LEFT_SHOULDER;
+          break;
+        case L_TRIGGER:
+          report.bLeftTrigger = 255;
+          break;
+        case L_CAPTURE:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_GUIDE;
+          break;
+        case L_MINUS:
+          // not implemented
+          break;
+        case L_STICK:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_LEFT_THUMB;
           break;
       }
       break;
