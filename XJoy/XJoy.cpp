@@ -23,6 +23,12 @@ XUSB_REPORT report;
 unsigned char data_left[DATA_BUFFER_SIZE];
 unsigned char data_right[DATA_BUFFER_SIZE];
 int res;
+HANDLE left_thread;
+DWORD left_thread_id;
+HANDLE right_thread;
+DWORD right_thread_id;
+HANDLE report_mutex;
+bool kill_threads = false;
 
 enum JOYCON_REGION {
   LEFT_DPAD,
@@ -416,24 +422,66 @@ void process_right_joycon() {
   region_part(data_right[2], RIGHT_AUX, R_STICK);
 }
 
+DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
+  WaitForSingleObject(report_mutex, INFINITE);
+  std::cout << " => left joycon thread started" << std::endl;
+  ReleaseMutex(report_mutex);
+  for(;;) {
+    if(kill_threads) return 0;
+    hid_read(left_joycon, data_left, DATA_BUFFER_SIZE);
+    WaitForSingleObject(report_mutex, INFINITE);
+    process_left_joycon();
+    report = blank_report;
+    XUSB_REPORT_INIT(&report);
+    vigem_target_x360_update(client, target, report);
+    std::cout << std::endl;
+    ReleaseMutex(report_mutex);
+  }
+  return 0;
+}
+
+DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
+  WaitForSingleObject(report_mutex, INFINITE);
+  std::cout << " => right joycon thread started" << std::endl;
+  ReleaseMutex(report_mutex);
+  for(;;) {
+    if(kill_threads) return 0;
+    hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
+    WaitForSingleObject(report_mutex, INFINITE);
+    process_right_joycon();
+    report = blank_report;
+    XUSB_REPORT_INIT(&report);
+    vigem_target_x360_update(client, target, report);
+    std::cout << std::endl;
+    ReleaseMutex(report_mutex);
+  }
+  return 0;
+}
+
 int main() {
   std::cout << "XJoy v0.1.0" << std::endl << std::endl;
 
   initialize_joycons();
   initialize_xbox();
 
-  for(;;) {
-    report = blank_report;
-    XUSB_REPORT_INIT(&report);
-    //hid_read(left_joycon, data_left, DATA_BUFFER_SIZE);
-    hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
-    //process_left_joycon();
-    process_right_joycon();
-    vigem_target_x360_update(client, target, report);
-    std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << "initializing threads..." << std::endl;
+  report_mutex = CreateMutex(NULL, FALSE, NULL);
+  if(report_mutex == NULL) {
+    printf("CreateMutex error: %d\n", GetLastError());
+    return 1;
   }
+  std::cout << " => created report mutex" << std::endl;
+  left_thread = CreateThread(0, 0, left_joycon_thread, 0, 0, &left_thread_id);
+  right_thread = CreateThread(0, 0, right_joycon_thread, 0, 0, &right_thread_id);
+  Sleep(500);
+  std::cout << std::endl;
 
-  Sleep(10000);
+  getchar();
+  kill_threads = true;
+  Sleep(10);
+  TerminateThread(left_thread, 0);
+  TerminateThread(right_thread, 0);
   std::cout << "disconnecting and exiting..." << std::endl;
   disconnect_exit();
 }
