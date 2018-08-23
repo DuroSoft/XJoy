@@ -4,9 +4,6 @@ XJoy allows you to use a pair of Nintendo Joy-Cons as a virtual Xbox 360 control
 on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
 [hidapi](https://github.com/signal11/hidapi).
 
-## Support this project
-[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
-
 ## Installation
 
 1. [install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
@@ -26,3 +23,8 @@ on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
    see the names of the buttons currently being pressed printed in the terminal.
 6. to exit, press [ENTER] in the terminal window. You can also simply close the window
    however this may not disconnect from the Joy-Cons and the virtual controller properly.
+
+## Support this project
+XJoy is a free product that I work on in my free time, so any contributions are greatly appreciated.
+
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
