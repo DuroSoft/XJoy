@@ -4,10 +4,15 @@ XJoy allows you to use a pair of Nintendo Joy-Cons as a virtual Xbox 360 control
 on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
 [hidapi](https://github.com/signal11/hidapi).
 
+## Support this project
+XJoy is a free product that I work on in my free time, so any contributions are greatly appreciated.
+
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
+
 ## Installation
 
 1. [install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
-2. Download the latest zip from the releases page and extract it somewhere permanent like your 
+2. Download the latest zip from the releases page and extract it somewhere permanent like your
 Documents folder
 3. That's it!
 
@@ -76,8 +81,3 @@ mappings are shown below:
 If you wish to build XJoy yourself, simply install the ViGEm Bus Driver as outlined in the
 installation steps, open the XJoy.sln file in Visual Studio 2018, and build. Everything
 should work out of the box but if it does not feel free to submit an issue.
-
-## Support this project
-XJoy is a free product that I work on in my free time, so any contributions are greatly appreciated.
-
-[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
