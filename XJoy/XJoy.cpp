@@ -319,6 +319,25 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
           break;
       }
+    case RIGHT_AUX:
+      switch(button) {
+      case R_SHOULDER:
+        report.wButtons = report.wButtons | XUSB_GAMEPAD_RIGHT_SHOULDER;
+        break;
+      case R_TRIGGER:
+        report.bRightTrigger = 255;
+        break;
+      case R_HOME:
+        report.wButtons = report.wButtons | XUSB_GAMEPAD_START;
+        break;
+      case R_PLUS:
+        // not implemented
+        break;
+      case R_STICK:
+        report.wButtons = report.wButtons | XUSB_GAMEPAD_RIGHT_THUMB;
+        break;
+      }
+      break;
   }
   report.wButtons = report.wButtons | xbox_button;
 }
