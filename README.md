@@ -23,6 +23,25 @@ on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
 6. to exit, press [ENTER] in the terminal window. You can also simply close the window
    however this may not disconnect from the Joy-Cons and the virtual controller properly.
 
+When you launch XJoy.exe, you should get output similar to this:
+
+```
+XJoy v0.1.0
+
+initializing emulated Xbox 360 controller...
+ => connected successfully
+ => added target Xbox 360 Controller
+
+initializing threads...
+ => created report mutex
+ => left Joy-Con thread started
+ => found left Joy-Con
+ => successfully connected to left Joy-Con
+ => right Joy-Con thread started
+ => found right Joy-Con
+ => successfully connected to right Joy-Con
+```
+
 ## Support this project
 XJoy is a free product that I work on in my free time, so any contributions are greatly appreciated.
 
