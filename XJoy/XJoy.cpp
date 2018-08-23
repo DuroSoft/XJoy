@@ -356,16 +356,16 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case RIGHT_BUTTONS:
       switch(button) {
         case R_BUT_A:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_B;
-          break;
-        case R_BUT_B:
           report.wButtons = report.wButtons | XUSB_GAMEPAD_A;
           break;
+        case R_BUT_B:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_B;
+          break;
         case R_BUT_X:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_Y;
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_X;
           break;
         case R_BUT_Y:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_X;
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_Y;
           break;
       }
       break;
@@ -430,9 +430,8 @@ void process_right_joycon() {
 
 DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
   WaitForSingleObject(report_mutex, INFINITE);
-  hid_init();
+  std::cout << " => left Joy-Con thread started" << std::endl;
   initialize_left_joycon();
-  std::cout << " => left joycon thread started" << std::endl;
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
@@ -450,9 +449,8 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
 
 DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   WaitForSingleObject(report_mutex, INFINITE);
-  hid_init();
+  std::cout << " => right Joy-Con thread started" << std::endl;
   initialize_right_joycon();
-  std::cout << " => right joycon thread started" << std::endl;
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
@@ -487,6 +485,7 @@ int main() {
   std::cout << "XJoy v0.1.0" << std::endl << std::endl;
 
   initialize_xbox();
+  hid_init();
 
   std::cout << std::endl;
   std::cout << "initializing threads..." << std::endl;
