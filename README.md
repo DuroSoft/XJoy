@@ -7,9 +7,8 @@ on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
 ## Installation
 
 1. [install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
-2. download the latest XJoy.exe executable from the releases page
-3. put XJoy.exe somewhere permanent like your Documents folder
-4. that's it!
+2. download the latest zip from the releases page and extract it somewhere permanent like your Documents folder
+3. that's it!
 
 ## Usage
 
