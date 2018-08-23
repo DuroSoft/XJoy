@@ -284,6 +284,41 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           break;
       }
       break;
+    case RIGHT_ANALOG:
+      switch(button) {
+        case R_ANALOG_DOWN:
+          report.sThumbRX = 0;
+          report.sThumbRY = XBOX_ANALOG_MIN;
+          break;
+        case R_ANALOG_UP:
+          report.sThumbRX = 0;
+          report.sThumbRY = XBOX_ANALOG_MAX;
+          break;
+        case R_ANALOG_LEFT:
+          report.sThumbRX = XBOX_ANALOG_MIN;
+          report.sThumbRY = 0;
+          break;
+        case R_ANALOG_RIGHT:
+          report.sThumbRX = XBOX_ANALOG_MAX;
+          report.sThumbRY = 0;
+          break;
+        case R_ANALOG_DOWN_LEFT:
+          report.sThumbRX = XBOX_ANALOG_DIAG_MIN;
+          report.sThumbRY = XBOX_ANALOG_DIAG_MIN;
+          break;
+        case R_ANALOG_DOWN_RIGHT:
+          report.sThumbRX = XBOX_ANALOG_DIAG_MAX;
+          report.sThumbRY = XBOX_ANALOG_DIAG_MIN;
+          break;
+        case R_ANALOG_UP_LEFT:
+          report.sThumbRX = XBOX_ANALOG_DIAG_MIN;
+          report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
+          break;
+        case R_ANALOG_UP_RIGHT:
+          report.sThumbRX = XBOX_ANALOG_DIAG_MAX;
+          report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
+          break;
+      }
   }
   report.wButtons = report.wButtons | xbox_button;
 }
