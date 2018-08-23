@@ -4,6 +4,7 @@
 #include "hidapi.h"
 #include <iostream>
 #include <string>
+#include <csignal>
 
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
@@ -159,22 +160,11 @@ std::string vigem_error_to_string(VIGEM_ERROR err) {
   }
 }
 
-void initialize_joycons() {
-  std::cout << "initializing Joy-Cons..." << std::endl;
-  hid_init();
-  std::cout << " => initialized hidapi library" << std::endl;
+void initialize_left_joycon() {
   struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
   if(left_joycon_info != NULL) std::cout << " => found left Joy-Con" << std::endl;
   else {
     std::cout << " => could not find left Joy-Con" << std::endl;
-    hid_exit();
-    vigem_free(client);
-    exit(1);
-  }
-  struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
-  if(right_joycon_info != NULL) std::cout << " => found right Joy-Con" << std::endl;
-  else {
-    std::cout << " => could not find right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
     exit(1);
@@ -187,15 +177,25 @@ void initialize_joycons() {
     vigem_free(client);
     exit(1);
   }
+}
+
+void initialize_right_joycon() {
+  struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
+  if(right_joycon_info != NULL) std::cout << " => found right Joy-Con" << std::endl;
+  else {
+    std::cout << " => could not find right Joy-Con" << std::endl;
+    hid_exit();
+    vigem_free(client);
+    exit(1);
+  }
   right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
-  if(left_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
+  if(right_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
   else {
     std::cout << " => could not connect to right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
     exit(1);
   }
-  std::cout << std::endl;
 }
 
 void initialize_xbox() {
@@ -227,14 +227,21 @@ void disconnect_exit() {
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
   if(!(region == LEFT_ANALOG && button == L_ANALOG_NONE) && !(region == RIGHT_ANALOG && button == R_ANALOG_NONE))
   std::cout << joycon_button_to_string(region, button) << " ";
-  USHORT xbox_button = 0;
   switch(region) {
     case LEFT_DPAD:
       switch(button) {
-        case L_DPAD_UP: xbox_button = XUSB_GAMEPAD_DPAD_UP; break;
-        case L_DPAD_DOWN: xbox_button = XUSB_GAMEPAD_DPAD_DOWN; break;
-        case L_DPAD_LEFT: xbox_button = XUSB_GAMEPAD_DPAD_LEFT; break;
-        case L_DPAD_RIGHT: xbox_button = XUSB_GAMEPAD_DPAD_RIGHT; break;
+        case L_DPAD_UP:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_UP;
+          break;
+        case L_DPAD_DOWN:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_DOWN;
+          break;
+        case L_DPAD_LEFT:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_LEFT;
+          break;
+        case L_DPAD_RIGHT:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_RIGHT;
+          break;
       }
       break;
     case LEFT_ANALOG:
@@ -363,7 +370,6 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
       }
       break;
   }
-  report.wButtons = report.wButtons | xbox_button;
 }
 
 void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a) {
@@ -424,15 +430,17 @@ void process_right_joycon() {
 
 DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
   WaitForSingleObject(report_mutex, INFINITE);
+  hid_init();
+  initialize_left_joycon();
   std::cout << " => left joycon thread started" << std::endl;
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
     hid_read(left_joycon, data_left, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
-    process_left_joycon();
     report = blank_report;
     XUSB_REPORT_INIT(&report);
+    process_left_joycon();
     vigem_target_x360_update(client, target, report);
     std::cout << std::endl;
     ReleaseMutex(report_mutex);
@@ -442,15 +450,17 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
 
 DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   WaitForSingleObject(report_mutex, INFINITE);
+  hid_init();
+  initialize_right_joycon();
   std::cout << " => right joycon thread started" << std::endl;
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
     hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
-    process_right_joycon();
     report = blank_report;
     XUSB_REPORT_INIT(&report);
+    process_right_joycon();
     vigem_target_x360_update(client, target, report);
     std::cout << std::endl;
     ReleaseMutex(report_mutex);
@@ -458,10 +468,24 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   return 0;
 }
 
+void terminate() {
+  kill_threads = true;
+  Sleep(10);
+  TerminateThread(left_thread, 0);
+  TerminateThread(right_thread, 0);
+  std::cout << "disconnecting and exiting..." << std::endl;
+  disconnect_exit();
+}
+
+void exit_handler(int signum) {
+  terminate();
+  exit(signum);
+}
+
 int main() {
+  signal(SIGINT, exit_handler);
   std::cout << "XJoy v0.1.0" << std::endl << std::endl;
 
-  initialize_joycons();
   initialize_xbox();
 
   std::cout << std::endl;
@@ -476,12 +500,7 @@ int main() {
   right_thread = CreateThread(0, 0, right_joycon_thread, 0, 0, &right_thread_id);
   Sleep(500);
   std::cout << std::endl;
-
   getchar();
-  kill_threads = true;
-  Sleep(10);
-  TerminateThread(left_thread, 0);
-  TerminateThread(right_thread, 0);
-  std::cout << "disconnecting and exiting..." << std::endl;
-  disconnect_exit();
+  terminate();
 }
+
