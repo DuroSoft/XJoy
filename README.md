@@ -47,7 +47,29 @@ initializing threads...
 
 Right now all buttons are hard-coded to their "default" xbox equivalents. If you wish to
 customize these mappings, feel free to modify the `process_button` method in XJoy.cpp. I
-plan to add support for a configuration file and maybe a GUI in later versions.
+plan to add support for a configuration file and maybe a GUI in later versions. The default
+mappings are shown below:
+
+
+| Joy-Con Button     | Xbox Button    |
+|--------------------|----------------|
+| A                  | A              |
+| B                  | B              |
+| X                  | X              |
+| Y                  | Y              |
+| Left Trigger       | Left Trigger   |
+| Right Trigger      | Right Trigger  |
+| Left Shoulder      | Left Shoulder  |
+| Right Shoulder     | Right Shoulder |
+| D-PAD              | D-PAD          |
+| Left 8-way Analog  | Left Analog    |
+| Right 8-way Analog | Right Analog   |
+| Left Stick         | Left Thumb     |
+| Right Stick        | Right Thumb    |
+| Home               | Start          |
+| Capture            | Guide          |
+| Plus               | not mapped     |
+| Minus              | not mapped     |
 
 ## Building
 
