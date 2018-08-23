@@ -20,7 +20,8 @@ hid_device *left_joycon = NULL;
 hid_device *right_joycon = NULL;
 PVIGEM_TARGET target;
 XUSB_REPORT report;
-unsigned char data[DATA_BUFFER_SIZE];
+unsigned char data_left[DATA_BUFFER_SIZE];
+unsigned char data_right[DATA_BUFFER_SIZE];
 int res;
 
 enum JOYCON_REGION {
@@ -218,6 +219,7 @@ void disconnect_exit() {
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
+  if(!(region == LEFT_ANALOG && button == L_ANALOG_NONE) && !(region == RIGHT_ANALOG && button == R_ANALOG_NONE))
   std::cout << joycon_button_to_string(region, button) << " ";
   USHORT xbox_button = 0;
   switch(region) {
@@ -338,6 +340,22 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         break;
       }
       break;
+    case RIGHT_BUTTONS:
+      switch(button) {
+        case R_BUT_A:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_B;
+          break;
+        case R_BUT_B:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_A;
+          break;
+        case R_BUT_X:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_Y;
+          break;
+        case R_BUT_Y:
+          report.wButtons = report.wButtons | XUSB_GAMEPAD_X;
+          break;
+      }
+      break;
   }
   report.wButtons = report.wButtons | xbox_button;
 }
@@ -364,59 +382,38 @@ void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b, JOY
   process_button(region, d);
 }
 
+inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
+  return !!(data & button);
+}
+
+inline void region_part(unsigned char data, JOYCON_REGION region, JOYCON_BUTTON button) {
+  if(has_button(data, button)) process_buttons(region, button);
+}
+
 void process_left_joycon() {
-  switch(data[1]) { // DPAD
-    case L_DPAD_DOWN:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN);
-      break;
-    case L_DPAD_UP:
-      process_buttons(LEFT_DPAD, L_DPAD_UP);
-      break;
-    case L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_LEFT:
-      process_buttons(LEFT_DPAD, L_DPAD_LEFT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_LEFT:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_UP:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_UP);
-      break;
-    case L_DPAD_LEFT + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_LEFT, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_LEFT + L_DPAD_UP:
-      process_buttons(LEFT_DPAD, L_DPAD_LEFT, L_DPAD_UP);
-      break;
-    case L_DPAD_UP + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_UP + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_UP, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_UP:
-      process_buttons(LEFT_DPAD, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_UP);
-      break;
-    case L_DPAD_UP + L_DPAD_LEFT + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_LEFT, L_DPAD_RIGHT);
-      break;
-    case L_DPAD_UP + L_DPAD_DOWN + L_DPAD_LEFT + L_DPAD_RIGHT:
-      process_buttons(LEFT_DPAD, L_DPAD_UP, L_DPAD_DOWN, L_DPAD_LEFT, L_DPAD_RIGHT);
-      break;
-  }
-  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(data_left[1], LEFT_DPAD, L_DPAD_UP);
+  region_part(data_left[1], LEFT_DPAD, L_DPAD_DOWN);
+  region_part(data_left[1], LEFT_DPAD, L_DPAD_LEFT);
+  region_part(data_left[1], LEFT_DPAD, L_DPAD_RIGHT);
+  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data_left[3]);
+  region_part(data_left[2], LEFT_AUX, L_TRIGGER);
+  region_part(data_left[2], LEFT_AUX, L_SHOULDER);
+  region_part(data_left[2], LEFT_AUX, L_CAPTURE);
+  region_part(data_left[2], LEFT_AUX, L_MINUS);
+  region_part(data_left[2], LEFT_AUX, L_STICK);
 }
 
 void process_right_joycon() {
-  // TODO
+  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_A);
+  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_B);
+  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_X);
+  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_Y);
+  process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data_right[3]);
+  region_part(data_right[2], RIGHT_AUX, R_TRIGGER);
+  region_part(data_right[2], RIGHT_AUX, R_SHOULDER);
+  region_part(data_right[2], RIGHT_AUX, R_HOME);
+  region_part(data_right[2], RIGHT_AUX, R_PLUS);
+  region_part(data_right[2], RIGHT_AUX, R_STICK);
 }
 
 int main() {
@@ -428,8 +425,9 @@ int main() {
   for(;;) {
     report = blank_report;
     XUSB_REPORT_INIT(&report);
-    hid_read(left_joycon, data, DATA_BUFFER_SIZE);
-    process_left_joycon();
+    //hid_read(left_joycon, data_left, DATA_BUFFER_SIZE);
+    hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
+    //process_left_joycon();
     process_right_joycon();
     vigem_target_x360_update(client, target, report);
     std::cout << std::endl;
