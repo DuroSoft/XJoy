@@ -4,6 +4,7 @@ XJoy allows you to use a pair of Nintendo Joy-Cons as a virtual Xbox 360 control
 on Windows. XJoy is made possible by [ViGEm](https://vigem.org/) and
 [hidapi](https://github.com/signal11/hidapi).
 
+## Support this project
 [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
 
 ## Installation
