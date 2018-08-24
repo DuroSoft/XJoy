@@ -11,7 +11,7 @@ XJoy is a free product that I work on in my free time, so any contributions are 
 
 ## Installation
 
-1. [install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
+1. [Install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
 2. Download the latest zip from the releases page and extract it somewhere permanent like your
 Documents folder
 3. That's it!
