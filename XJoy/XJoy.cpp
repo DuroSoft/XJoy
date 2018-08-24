@@ -14,7 +14,7 @@ const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 const XUSB_REPORT blank_report;
-#define DATA_BUFFER_SIZE 6
+#define DATA_BUFFER_SIZE 20
 
 PVIGEM_CLIENT client = vigem_alloc();
 hid_device *left_joycon = NULL;
@@ -225,7 +225,7 @@ void disconnect_exit() {
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
-  if(!(region == LEFT_ANALOG && button == L_ANALOG_NONE) && !(region == RIGHT_ANALOG && button == R_ANALOG_NONE))
+  if((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)) return;
   std::cout << joycon_button_to_string(region, button) << " ";
   switch(region) {
     case LEFT_DPAD:
@@ -455,6 +455,7 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   for(;;) {
     if(kill_threads) return 0;
     hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
+    std::cout << std::endl;
     WaitForSingleObject(report_mutex, INFINITE);
     report = blank_report;
     XUSB_REPORT_INIT(&report);
