@@ -167,6 +167,8 @@ void initialize_left_joycon() {
     std::cout << " => could not find left Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
+    std::cout << "press [ENTER] to exit" << std::endl;
+    getchar();
     exit(1);
   }
   left_joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
@@ -175,6 +177,8 @@ void initialize_left_joycon() {
     std::cout << " => could not connect to left Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
+    std::cout << "press [ENTER] to exit" << std::endl;
+    getchar();
     exit(1);
   }
 }
@@ -186,6 +190,8 @@ void initialize_right_joycon() {
     std::cout << " => could not find right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
+    std::cout << "press [ENTER] to exit" << std::endl;
+    getchar();
     exit(1);
   }
   right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
@@ -194,6 +200,8 @@ void initialize_right_joycon() {
     std::cout << " => could not connect to right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
+    std::cout << "press [ENTER] to exit" << std::endl;
+    getchar();
     exit(1);
   }
 }
@@ -205,8 +213,9 @@ void initialize_xbox() {
     std::cout << " => connected successfully" << std::endl;
   } else {
     std::cout << "connection error: " << vigem_error_to_string(err) << std::endl;
-    std::cout << "exiting..." << std::endl;
     vigem_free(client);
+    std::cout << "press [ENTER] to exit" << std::endl;
+    getchar();
     exit(1);
   }
   target = vigem_target_x360_alloc();
