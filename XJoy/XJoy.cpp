@@ -464,7 +464,6 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   for(;;) {
     if(kill_threads) return 0;
     hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
-    std::cout << std::endl;
     WaitForSingleObject(report_mutex, INFINITE);
     report = blank_report;
     XUSB_REPORT_INIT(&report);
