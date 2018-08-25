@@ -36,8 +36,8 @@ enum JOYCON_REGION {
   LEFT_ANALOG,
   LEFT_AUX,
   RIGHT_BUTTONS,
-  RIGHT_AUX,
-  RIGHT_ANALOG
+  RIGHT_ANALOG,
+  RIGHT_AUX
 };
 
 enum JOYCON_BUTTON {
@@ -235,7 +235,7 @@ void disconnect_exit() {
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
-  if(!(region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE))
+  if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
   std::cout << joycon_button_to_string(region, button) << " ";
   switch(region) {
     case LEFT_DPAD:
@@ -352,6 +352,7 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           report.sThumbRY = 0;
           break;
       }
+      break;
     case RIGHT_AUX:
       switch(button) {
       case R_SHOULDER:
@@ -367,7 +368,7 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         // not implemented
         break;
       case R_STICK:
-        //right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
+        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
         break;
       }
       break;
