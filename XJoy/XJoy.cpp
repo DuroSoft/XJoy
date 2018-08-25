@@ -13,7 +13,6 @@ const int XBOX_ANALOG_MIN = -32768;
 const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
-const XUSB_REPORT blank_report;
 #define DATA_BUFFER_SIZE 20
 
 PVIGEM_CLIENT client = vigem_alloc();
@@ -21,14 +20,15 @@ hid_device *left_joycon = NULL;
 hid_device *right_joycon = NULL;
 PVIGEM_TARGET target;
 XUSB_REPORT report;
-unsigned char data_left[DATA_BUFFER_SIZE];
-unsigned char data_right[DATA_BUFFER_SIZE];
+unsigned char data[DATA_BUFFER_SIZE];
 int res;
 HANDLE left_thread;
 DWORD left_thread_id;
 HANDLE right_thread;
 DWORD right_thread_id;
 HANDLE report_mutex;
+USHORT left_buttons = 0;
+USHORT right_buttons = 0;
 bool kill_threads = false;
 
 enum JOYCON_REGION {
@@ -220,6 +220,7 @@ void initialize_xbox() {
   }
   target = vigem_target_x360_alloc();
   vigem_target_add(client, target);
+  XUSB_REPORT_INIT(&report);
   std::cout << " => added target Xbox 360 Controller" << std::endl;
   std::cout << std::endl;
 }
@@ -234,22 +235,22 @@ void disconnect_exit() {
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
-  if((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)) return;
+  if(!(region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE))
   std::cout << joycon_button_to_string(region, button) << " ";
   switch(region) {
     case LEFT_DPAD:
       switch(button) {
         case L_DPAD_UP:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_UP;
+          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_UP;
           break;
         case L_DPAD_DOWN:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_DOWN;
+          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_DOWN;
           break;
         case L_DPAD_LEFT:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_LEFT;
+          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_LEFT;
           break;
         case L_DPAD_RIGHT:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_DPAD_RIGHT;
+          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_RIGHT;
           break;
       }
       break;
@@ -287,24 +288,28 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
           report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
           break;
+        case L_ANALOG_NONE:
+          report.sThumbLX = 0;
+          report.sThumbLY = 0;
+          break;
       }
       break;
     case LEFT_AUX:
       switch(button) {
         case L_SHOULDER:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_LEFT_SHOULDER;
+          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_SHOULDER;
           break;
         case L_TRIGGER:
           report.bLeftTrigger = 255;
           break;
         case L_CAPTURE:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_GUIDE;
+          left_buttons = left_buttons | XUSB_GAMEPAD_GUIDE;
           break;
         case L_MINUS:
           // not implemented
           break;
         case L_STICK:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_LEFT_THUMB;
+          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_THUMB;
           break;
       }
       break;
@@ -342,39 +347,43 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           report.sThumbRX = XBOX_ANALOG_DIAG_MAX;
           report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
           break;
+        case R_ANALOG_NONE:
+          report.sThumbRX = 0;
+          report.sThumbRY = 0;
+          break;
       }
     case RIGHT_AUX:
       switch(button) {
       case R_SHOULDER:
-        report.wButtons = report.wButtons | XUSB_GAMEPAD_RIGHT_SHOULDER;
+        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_SHOULDER;
         break;
       case R_TRIGGER:
         report.bRightTrigger = 255;
         break;
       case R_HOME:
-        report.wButtons = report.wButtons | XUSB_GAMEPAD_START;
+        right_buttons = right_buttons | XUSB_GAMEPAD_START;
         break;
       case R_PLUS:
         // not implemented
         break;
       case R_STICK:
-        report.wButtons = report.wButtons | XUSB_GAMEPAD_RIGHT_THUMB;
+        //right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
         break;
       }
       break;
     case RIGHT_BUTTONS:
       switch(button) {
         case R_BUT_A:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_A;
+          right_buttons = right_buttons | XUSB_GAMEPAD_A;
           break;
         case R_BUT_B:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_B;
+          right_buttons = right_buttons | XUSB_GAMEPAD_B;
           break;
         case R_BUT_X:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_X;
+          right_buttons = right_buttons | XUSB_GAMEPAD_X;
           break;
         case R_BUT_Y:
-          report.wButtons = report.wButtons | XUSB_GAMEPAD_Y;
+          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
           break;
       }
       break;
@@ -412,29 +421,35 @@ inline void region_part(unsigned char data, JOYCON_REGION region, JOYCON_BUTTON 
 }
 
 void process_left_joycon() {
-  region_part(data_left[1], LEFT_DPAD, L_DPAD_UP);
-  region_part(data_left[1], LEFT_DPAD, L_DPAD_DOWN);
-  region_part(data_left[1], LEFT_DPAD, L_DPAD_LEFT);
-  region_part(data_left[1], LEFT_DPAD, L_DPAD_RIGHT);
-  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data_left[3]);
-  region_part(data_left[2], LEFT_AUX, L_TRIGGER);
-  region_part(data_left[2], LEFT_AUX, L_SHOULDER);
-  region_part(data_left[2], LEFT_AUX, L_CAPTURE);
-  region_part(data_left[2], LEFT_AUX, L_MINUS);
-  region_part(data_left[2], LEFT_AUX, L_STICK);
+  report.bLeftTrigger = 0;
+  left_buttons = 0;
+  region_part(data[1], LEFT_DPAD, L_DPAD_UP);
+  region_part(data[1], LEFT_DPAD, L_DPAD_DOWN);
+  region_part(data[1], LEFT_DPAD, L_DPAD_LEFT);
+  region_part(data[1], LEFT_DPAD, L_DPAD_RIGHT);
+  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(data[2], LEFT_AUX, L_TRIGGER);
+  region_part(data[2], LEFT_AUX, L_SHOULDER);
+  region_part(data[2], LEFT_AUX, L_CAPTURE);
+  region_part(data[2], LEFT_AUX, L_MINUS);
+  region_part(data[2], LEFT_AUX, L_STICK);
+  report.wButtons = right_buttons | left_buttons;
 }
 
 void process_right_joycon() {
-  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_A);
-  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_B);
-  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_X);
-  region_part(data_right[1], RIGHT_BUTTONS, R_BUT_Y);
-  process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data_right[3]);
-  region_part(data_right[2], RIGHT_AUX, R_TRIGGER);
-  region_part(data_right[2], RIGHT_AUX, R_SHOULDER);
-  region_part(data_right[2], RIGHT_AUX, R_HOME);
-  region_part(data_right[2], RIGHT_AUX, R_PLUS);
-  region_part(data_right[2], RIGHT_AUX, R_STICK);
+  report.bRightTrigger = 0;
+  right_buttons = 0;
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_A);
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_B);
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_X);
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_Y);
+  process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(data[2], RIGHT_AUX, R_TRIGGER);
+  region_part(data[2], RIGHT_AUX, R_SHOULDER);
+  region_part(data[2], RIGHT_AUX, R_HOME);
+  region_part(data[2], RIGHT_AUX, R_PLUS);
+  region_part(data[2], RIGHT_AUX, R_STICK);
+  report.wButtons = left_buttons | right_buttons;
 }
 
 DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
@@ -444,10 +459,8 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
-    hid_read(left_joycon, data_left, DATA_BUFFER_SIZE);
+    hid_read(left_joycon, data, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
-    report = blank_report;
-    XUSB_REPORT_INIT(&report);
     process_left_joycon();
     vigem_target_x360_update(client, target, report);
     std::cout << std::endl;
@@ -463,10 +476,8 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   ReleaseMutex(report_mutex);
   for(;;) {
     if(kill_threads) return 0;
-    hid_read(right_joycon, data_right, DATA_BUFFER_SIZE);
+    hid_read(right_joycon, data, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
-    report = blank_report;
-    XUSB_REPORT_INIT(&report);
     process_right_joycon();
     vigem_target_x360_update(client, target, report);
     std::cout << std::endl;
