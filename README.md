@@ -72,7 +72,7 @@ mappings are shown below:
 | Left Stick         | Left Thumb     |
 | Right Stick        | Right Thumb    |
 | Home               | Start          |
-| Capture            | Guide          |
+| Capture            | Back           |
 | Plus               | not mapped     |
 | Minus              | not mapped     |
 

@@ -303,7 +303,7 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
           report.bLeftTrigger = 255;
           break;
         case L_CAPTURE:
-          left_buttons = left_buttons | XUSB_GAMEPAD_GUIDE;
+          left_buttons = left_buttons | XUSB_GAMEPAD_BACK;
           break;
         case L_MINUS:
           // not implemented
