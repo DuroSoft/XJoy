@@ -73,8 +73,8 @@ mappings are shown below:
 | Right Stick        | Right Thumb    |
 | Home               | Start          |
 | Capture            | Back           |
-| Plus               | not mapped     |
-| Minus              | not mapped     |
+| Plus               | Start          |
+| Minus              | Back           |
 
 ## Building
 
