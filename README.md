@@ -79,5 +79,5 @@ mappings are shown below:
 ## Building
 
 If you wish to build XJoy yourself, simply install the ViGEm Bus Driver as outlined in the
-installation steps, open the XJoy.sln file in Visual Studio 2018, and build. Everything
+installation steps, open the XJoy.sln file in Visual Studio 2017, and build. Everything
 should work out of the box but if it does not feel free to submit an issue.
