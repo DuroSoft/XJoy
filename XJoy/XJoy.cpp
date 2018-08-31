@@ -503,7 +503,7 @@ void exit_handler(int signum) {
 
 int main() {
   signal(SIGINT, exit_handler);
-  std::cout << "XJoy v0.1.3" << std::endl << std::endl;
+  std::cout << "XJoy v0.1.4" << std::endl << std::endl;
 
   initialize_xbox();
   hid_init();
