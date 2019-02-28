@@ -45,6 +45,8 @@ enum JOYCON_BUTTON {
   L_DPAD_DOWN = 2,
   L_DPAD_UP = 4,
   L_DPAD_RIGHT = 8,
+  L_DPAD_SL = 16,
+  L_DPAD_SR = 32,
   L_ANALOG_LEFT = 4,          // left 8-way analog
   L_ANALOG_UP_LEFT = 5,
   L_ANALOG_UP = 6,
@@ -63,6 +65,8 @@ enum JOYCON_BUTTON {
   R_BUT_B = 4,
   R_BUT_Y = 8,
   R_BUT_X = 2,
+  R_BUT_SL = 16,
+  R_BUT_SR = 32,
   R_SHOULDER = 64,            // right aux area
   R_TRIGGER = 128,
   R_HOME = 16,
@@ -87,6 +91,8 @@ std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) 
         case L_DPAD_DOWN: return "L_DPAD_DOWN";
         case L_DPAD_UP: return "L_DPAD_UP";
         case L_DPAD_RIGHT: return "L_DPAD_RIGHT";
+        case L_DPAD_SL: return "L_DPAD_SL";
+        case L_DPAD_SR: return "L_DPAD_SR";
       }
     case LEFT_ANALOG:
       switch(button) {
@@ -114,6 +120,8 @@ std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) 
         case R_BUT_B: return "R_BUT_B";
         case R_BUT_Y: return "R_BUT_Y";
         case R_BUT_X: return "R_BUT_X";
+        case R_BUT_SL: return "R_BUT_SL";
+        case R_BUT_SR: return "R_BUT_SR";
       }
     case RIGHT_AUX:
       switch(button) {
@@ -252,6 +260,12 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         case L_DPAD_RIGHT:
           left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_RIGHT;
           break;
+        case L_DPAD_SL:
+          left_buttons = left_buttons | XUSB_GAMEPAD_X;
+          break;
+        case L_DPAD_SR:
+          left_buttons = left_buttons | XUSB_GAMEPAD_A;
+          break;
       }
       break;
     case LEFT_ANALOG:
@@ -386,6 +400,12 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
         case R_BUT_Y:
           right_buttons = right_buttons | XUSB_GAMEPAD_Y;
           break;
+        case R_BUT_SL:
+          right_buttons = right_buttons | XUSB_GAMEPAD_B;
+          break;
+        case R_BUT_SR:
+          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+          break;
       }
       break;
   }
@@ -428,6 +448,8 @@ void process_left_joycon() {
   region_part(data[1], LEFT_DPAD, L_DPAD_DOWN);
   region_part(data[1], LEFT_DPAD, L_DPAD_LEFT);
   region_part(data[1], LEFT_DPAD, L_DPAD_RIGHT);
+  region_part(data[1], LEFT_DPAD, L_DPAD_SL);
+  region_part(data[1], LEFT_DPAD, L_DPAD_SR);
   process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
   region_part(data[2], LEFT_AUX, L_TRIGGER);
   region_part(data[2], LEFT_AUX, L_SHOULDER);
@@ -444,6 +466,8 @@ void process_right_joycon() {
   region_part(data[1], RIGHT_BUTTONS, R_BUT_B);
   region_part(data[1], RIGHT_BUTTONS, R_BUT_X);
   region_part(data[1], RIGHT_BUTTONS, R_BUT_Y);
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_SL);
+  region_part(data[1], RIGHT_BUTTONS, R_BUT_SR);
   process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
   region_part(data[2], RIGHT_AUX, R_TRIGGER);
   region_part(data[2], RIGHT_AUX, R_SHOULDER);
@@ -503,7 +527,7 @@ void exit_handler(int signum) {
 
 int main() {
   signal(SIGINT, exit_handler);
-  std::cout << "XJoy v0.1.5" << std::endl << std::endl;
+  std::cout << "XJoy v0.1.6" << std::endl << std::endl;
 
   initialize_xbox();
   hid_init();
