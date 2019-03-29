@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string>
 #include <csignal>
+#include <tuple>
+#include <unordered_map>
 #include "Yaml.hpp"
 
 const unsigned short NINTENDO = 1406; // 0x057e
@@ -83,6 +85,71 @@ enum JOYCON_BUTTON {
   R_ANALOG_DOWN_LEFT = 7,
   R_ANALOG_NONE = 8
 };
+
+std::unordered_map<JOYCON_BUTTON, XUSB_BUTTON> button_mappings;
+
+std::tuple<JOYCON_REGION, JOYCON_BUTTON> string_to_joycon_button(std::string input) {
+  if (input == "L_DPAD_LEFT") return std::make_tuple(LEFT_DPAD, L_DPAD_LEFT);
+  if (input == "L_DPAD_DOWN") return std::make_tuple(LEFT_DPAD, L_DPAD_DOWN);
+  if (input == "L_DPAD_UP") return std::make_tuple(LEFT_DPAD, L_DPAD_UP);
+  if (input == "L_DPAD_RIGHT") return std::make_tuple(LEFT_DPAD, L_DPAD_RIGHT);
+  if (input == "L_DPAD_SL") return std::make_tuple(LEFT_DPAD, L_DPAD_SL);
+  if (input == "L_DPAD_SR") return std::make_tuple(LEFT_DPAD, L_DPAD_SR);
+  if (input == "L_ANALOG_LEFT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_LEFT);
+  if (input == "L_ANALOG_UP_LEFT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_UP_LEFT);
+  if (input == "L_ANALOG_UP") return std::make_tuple(LEFT_ANALOG, L_ANALOG_UP);
+  if (input == "L_ANALOG_UP_RIGHT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_UP_RIGHT);
+  if (input == "L_ANALOG_RIGHT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_RIGHT);
+  if (input == "L_ANALOG_DOWN_RIGHT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_DOWN_RIGHT);
+  if (input == "L_ANALOG_DOWN") return std::make_tuple(LEFT_ANALOG, L_ANALOG_DOWN);
+  if (input == "L_ANALOG_DOWN_LEFT") return std::make_tuple(LEFT_ANALOG, L_ANALOG_DOWN_LEFT);
+  if (input == "L_ANALOG_NONE") return std::make_tuple(LEFT_ANALOG, L_ANALOG_NONE);
+  if (input == "L_SHOULDER") return std::make_tuple(LEFT_AUX, L_SHOULDER);
+  if (input == "L_TRIGGER") return std::make_tuple(LEFT_AUX, L_TRIGGER);
+  if (input == "L_CAPTURE") return std::make_tuple(LEFT_AUX, L_CAPTURE);
+  if (input == "L_MINUS") return std::make_tuple(LEFT_AUX, L_MINUS);
+  if (input == "L_STICK") return std::make_tuple(LEFT_AUX, L_STICK);
+  if (input == "R_BUT_A") return std::make_tuple(RIGHT_BUTTONS, R_BUT_A);
+  if (input == "R_BUT_B") return std::make_tuple(RIGHT_BUTTONS, R_BUT_B);
+  if (input == "R_BUT_Y") return std::make_tuple(RIGHT_BUTTONS, R_BUT_Y);
+  if (input == "R_BUT_X") return std::make_tuple(RIGHT_BUTTONS, R_BUT_X);
+  if (input == "R_BUT_SL") return std::make_tuple(RIGHT_BUTTONS, R_BUT_SL);
+  if (input == "R_BUT_SR") return std::make_tuple(RIGHT_BUTTONS, R_BUT_SR);
+  if (input == "R_SHOULDER") return std::make_tuple(RIGHT_AUX, R_SHOULDER);
+  if (input == "R_TRIGGER") return std::make_tuple(RIGHT_AUX, R_TRIGGER);
+  if (input == "R_HOME") return std::make_tuple(RIGHT_AUX, R_HOME);
+  if (input == "R_PLUS") return std::make_tuple(RIGHT_AUX, R_PLUS);
+  if (input == "R_STICK") return std::make_tuple(RIGHT_AUX, R_STICK);
+  if (input == "R_ANALOG_LEFT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_LEFT);
+  if (input == "R_ANALOG_UP_LEFT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_UP_LEFT);
+  if (input == "R_ANALOG_UP") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_UP);
+  if (input == "R_ANALOG_UP_RIGHT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_UP_RIGHT);
+  if (input == "R_ANALOG_RIGHT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_RIGHT);
+  if (input == "R_ANALOG_DOWN_RIGHT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_DOWN_RIGHT);
+  if (input == "R_ANALOG_DOWN") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_DOWN);
+  if (input == "R_ANALOG_DOWN_LEFT") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_DOWN_LEFT);
+  if (input == "R_ANALOG_NONE") return std::make_tuple(RIGHT_ANALOG, R_ANALOG_NONE);
+  throw "invalid joycon button: " + input;
+}
+
+XUSB_BUTTON string_to_xbox_button(std::string input) {
+  if (input == "XUSB_GAMEPAD_DPAD_UP") return XUSB_GAMEPAD_DPAD_UP;
+  if (input == "XUSB_GAMEPAD_DPAD_DOWN") return XUSB_GAMEPAD_DPAD_DOWN;
+  if (input == "XUSB_GAMEPAD_DPAD_LEFT") return XUSB_GAMEPAD_DPAD_LEFT;
+  if (input == "XUSB_GAMEPAD_DPAD_RIGHT") return XUSB_GAMEPAD_DPAD_RIGHT;
+  if (input == "XUSB_GAMEPAD_START") return XUSB_GAMEPAD_START;
+  if (input == "XUSB_GAMEPAD_BACK") return XUSB_GAMEPAD_BACK;
+  if (input == "XUSB_GAMEPAD_LEFT_THUMB") return XUSB_GAMEPAD_LEFT_THUMB;
+  if (input == "XUSB_GAMEPAD_RIGHT_THUMB") return XUSB_GAMEPAD_RIGHT_THUMB;
+  if (input == "XUSB_GAMEPAD_LEFT_SHOULDER") return XUSB_GAMEPAD_LEFT_SHOULDER;
+  if (input == "XUSB_GAMEPAD_RIGHT_SHOULDER") return XUSB_GAMEPAD_RIGHT_SHOULDER;
+  if (input == "XUSB_GAMEPAD_GUIDE") return XUSB_GAMEPAD_GUIDE;
+  if (input == "XUSB_GAMEPAD_A") return XUSB_GAMEPAD_A;
+  if (input == "XUSB_GAMEPAD_B") return XUSB_GAMEPAD_B;
+  if (input == "XUSB_GAMEPAD_X") return XUSB_GAMEPAD_X;
+  if (input == "XUSB_GAMEPAD_Y") return XUSB_GAMEPAD_Y;
+  throw "invalid xbox button: " + input;
+}
 
 std::string joycon_button_to_string(JOYCON_REGION region, JOYCON_BUTTON button) {
   switch(region) {
@@ -246,6 +313,23 @@ void disconnect_exit() {
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
   if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
   std::cout << joycon_button_to_string(region, button) << " ";
+  auto got = button_mappings.find(button);
+  if (got != button_mappings.end()) {
+    XUSB_BUTTON target = got->second;
+    switch (region) {
+      case LEFT_DPAD:
+      case LEFT_AUX:
+        left_buttons = left_buttons | target;
+        return;
+      case LEFT_ANALOG:
+      case RIGHT_ANALOG:
+        break;
+      case RIGHT_BUTTONS:
+      case RIGHT_AUX:
+        right_buttons = right_buttons | target;
+        return;
+    }
+  }
   switch(region) {
     case LEFT_DPAD:
       switch(button) {
