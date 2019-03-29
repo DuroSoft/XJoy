@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <csignal>
+#include "Yaml.hpp"
 
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
