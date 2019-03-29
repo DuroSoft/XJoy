@@ -59,10 +59,10 @@ mappings are shown below:
 
 | Joy-Con Button     | Xbox Button    |
 |--------------------|----------------|
-| A                  | A              |
-| B                  | B              |
-| X                  | X              |
-| Y                  | Y              |
+| A                  | B              |
+| B                  | A              |
+| X                  | Y              |
+| Y                  | X              |
 | Left Trigger       | Left Trigger   |
 | Right Trigger      | Right Trigger  |
 | Left Shoulder      | Left Shoulder  |

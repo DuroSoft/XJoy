@@ -389,16 +389,16 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case RIGHT_BUTTONS:
       switch(button) {
         case R_BUT_A:
-          right_buttons = right_buttons | XUSB_GAMEPAD_A;
-          break;
-        case R_BUT_B:
           right_buttons = right_buttons | XUSB_GAMEPAD_B;
           break;
+        case R_BUT_B:
+          right_buttons = right_buttons | XUSB_GAMEPAD_A;
+          break;
         case R_BUT_X:
-          right_buttons = right_buttons | XUSB_GAMEPAD_X;
+          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
           break;
         case R_BUT_Y:
-          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+          right_buttons = right_buttons | XUSB_GAMEPAD_X;
           break;
         case R_BUT_SL:
           right_buttons = right_buttons | XUSB_GAMEPAD_B;
