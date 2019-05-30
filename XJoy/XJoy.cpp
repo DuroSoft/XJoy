@@ -581,19 +581,19 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case LEFT_AUX:
       switch(button) {
         case L_SHOULDER:
-          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_SHOULDER;
+          left_buttons = left_buttons | get_mapping_from_config("L_SHOULDER", XUSB_GAMEPAD_LEFT_SHOULDER);
           break;
         case L_TRIGGER:
           report.bLeftTrigger = 255;
           break;
         case L_CAPTURE:
-          left_buttons = left_buttons | XUSB_GAMEPAD_BACK;
+          left_buttons = left_buttons | get_mapping_from_config("L_CAPTURE", XUSB_GAMEPAD_BACK);
           break;
         case L_MINUS:
-          left_buttons = left_buttons | XUSB_GAMEPAD_BACK;
+          left_buttons = left_buttons | get_mapping_from_config("L_MINUS", XUSB_GAMEPAD_BACK);
           break;
         case L_STICK:
-          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_THUMB;
+          left_buttons = left_buttons | get_mapping_from_config("L_STICK", XUSB_GAMEPAD_LEFT_THUMB);
           break;
       }
       break;
@@ -640,41 +640,41 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case RIGHT_AUX:
       switch(button) {
       case R_SHOULDER:
-        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_SHOULDER;
+        right_buttons = right_buttons | get_mapping_from_config("R_SHOULDER", XUSB_GAMEPAD_RIGHT_SHOULDER);
         break;
       case R_TRIGGER:
         report.bRightTrigger = 255;
         break;
       case R_HOME:
-        right_buttons = right_buttons | XUSB_GAMEPAD_START;
+        right_buttons = right_buttons | get_mapping_from_config("R_HOME", XUSB_GAMEPAD_START);
         break;
       case R_PLUS:
-        right_buttons = right_buttons | XUSB_GAMEPAD_START;
+        right_buttons = right_buttons | get_mapping_from_config("R_PLUS", XUSB_GAMEPAD_START);
         break;
       case R_STICK:
-        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
+        right_buttons = right_buttons | get_mapping_from_config("R_STICK", XUSB_GAMEPAD_RIGHT_THUMB);
         break;
       }
       break;
     case RIGHT_BUTTONS:
       switch(button) {
         case R_BUT_A:
-          right_buttons = right_buttons | XUSB_GAMEPAD_B;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_A", XUSB_GAMEPAD_B);
           break;
         case R_BUT_B:
-          right_buttons = right_buttons | XUSB_GAMEPAD_A;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_B", XUSB_GAMEPAD_A);
           break;
         case R_BUT_X:
-          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_X", XUSB_GAMEPAD_Y);
           break;
         case R_BUT_Y:
-          right_buttons = right_buttons | XUSB_GAMEPAD_X;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_Y", XUSB_GAMEPAD_X);
           break;
         case R_BUT_SL:
-          right_buttons = right_buttons | XUSB_GAMEPAD_B;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_SL", XUSB_GAMEPAD_B);
           break;
         case R_BUT_SR:
-          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+          right_buttons = right_buttons | get_mapping_from_config("R_BUT_SR", XUSB_GAMEPAD_Y);
           break;
       }
       break;
