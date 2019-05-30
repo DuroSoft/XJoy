@@ -21,6 +21,9 @@ const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 
+// Config file
+std::shared_ptr<cpptoml::table> config;
+
 #define DATA_BUFFER_SIZE 49
 #define OUT_BUFFER_SIZE 49
 u8 data[DATA_BUFFER_SIZE];
@@ -244,6 +247,39 @@ std::string vigem_error_to_string(VIGEM_ERROR err) {
   }
 }
 
+void load_config() {
+	try {
+		config = cpptoml::parse_file("config.toml");
+		std::cout << "=> Successfully loaded configuration file." << std::endl;
+	}
+	catch (cpptoml::parse_exception) {
+		config = NULL;
+		std::cerr << "=> There was an error loading the configuration file, default values will be used." << std::endl;
+	}
+}
+
+/// <summary>
+/// Gets the mapping for a specific key value
+/// </summary>
+/// <param name="key">The key in the config file</param>
+/// <param name="fallback">The mapping to use should there be a failure in loading the config</param>
+/// <returns>The mapped value, in the format of _XUSB_BUTTON enum</returns>
+_XUSB_BUTTON get_mapping_from_config(std::string key, _XUSB_BUTTON fallback) {
+	// Return the fallback value if the config was loaded incorrectly
+	if (config == NULL) {
+		return fallback;
+	}
+
+	// Restrict the keys to the mapping section of the config
+	std::string str_value = *config->get_qualified_as<std::string>("mappings." + key);
+	try {
+		return string_to_xbox_button(str_value);
+	}
+	catch (std::string param){
+		std::cerr << "=> Invalid button provided in config: " << param << std::endl;
+		return fallback;
+	}
+}
 
 void subcomm(hid_device* joycon, u8* in, u8 len, u8 comm, u8 get_response, u8 is_left)
 {
@@ -397,9 +433,6 @@ void initialize_right_joycon() {
     exit(1);
   }
   setup_joycon(right_joycon, 0x1, 0);
-
-
-
 }
 
 void initialize_xbox() {
@@ -486,22 +519,22 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case LEFT_DPAD:
       switch(button) {
         case L_DPAD_UP:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_UP;
+		  left_buttons = left_buttons | get_mapping_from_config("L_DPAD_UP", XUSB_GAMEPAD_DPAD_UP);
           break;
         case L_DPAD_DOWN:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_DOWN;
+          left_buttons = left_buttons | get_mapping_from_config("L_DPAD_DOWN", XUSB_GAMEPAD_DPAD_DOWN);
           break;
         case L_DPAD_LEFT:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_LEFT;
+          left_buttons = left_buttons | get_mapping_from_config("L_DPAD_LEFT", XUSB_GAMEPAD_DPAD_LEFT);
           break;
         case L_DPAD_RIGHT:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_RIGHT;
+          left_buttons = left_buttons | get_mapping_from_config("L_DPAD_RIGHT", XUSB_GAMEPAD_DPAD_RIGHT);
           break;
         case L_DPAD_SL:
-          left_buttons = left_buttons | XUSB_GAMEPAD_X;
+          left_buttons = left_buttons | get_mapping_from_config("L_DPAD_SL", XUSB_GAMEPAD_X);
           break;
         case L_DPAD_SR:
-          left_buttons = left_buttons | XUSB_GAMEPAD_A;
+          left_buttons = left_buttons | get_mapping_from_config("L_DPAD_SR", XUSB_GAMEPAD_A);
           break;
       }
       break;
@@ -797,6 +830,7 @@ int main() {
   signal(SIGINT, exit_handler);
   std::cout << "XJoy v0.1.8" << std::endl << std::endl;
 
+  load_config();
   initialize_xbox();
   hid_init();
 
