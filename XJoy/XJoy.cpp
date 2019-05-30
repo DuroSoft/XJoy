@@ -9,6 +9,10 @@
 #include <unordered_map>
 #include "Yaml.hpp"
 
+
+#define u8 uint8_t
+#define u16 uint16_t
+
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
 const unsigned short JOYCON_R = 8199; // 0x2007
@@ -16,14 +20,18 @@ const int XBOX_ANALOG_MIN = -32768;
 const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
-#define DATA_BUFFER_SIZE 20
+
+#define DATA_BUFFER_SIZE 49
+#define OUT_BUFFER_SIZE 49
+u8 data[DATA_BUFFER_SIZE];
+u16 stick_cal[14];
+u8 global_counter[2] = { 0,0 };
 
 PVIGEM_CLIENT client = vigem_alloc();
 hid_device *left_joycon = NULL;
 hid_device *right_joycon = NULL;
 PVIGEM_TARGET target;
 XUSB_REPORT report;
-unsigned char data[DATA_BUFFER_SIZE];
 int res;
 HANDLE left_thread;
 DWORD left_thread_id;
@@ -236,6 +244,112 @@ std::string vigem_error_to_string(VIGEM_ERROR err) {
   }
 }
 
+
+void subcomm(hid_device* joycon, u8* in, u8 len, u8 comm, u8 get_response, u8 is_left)
+{
+	u8 buf[OUT_BUFFER_SIZE] = { 0 };
+	buf[0] = 0x1;
+	buf[1] = global_counter[is_left];
+	buf[2] = 0x0;
+	buf[3] = 0x1;
+	buf[4] = 0x40;
+	buf[5] = 0x40;
+	buf[6] = 0x0;
+	buf[7] = 0x1;
+	buf[8] = 0x40;
+	buf[9] = 0x40;
+	buf[10] = comm;
+	for (int i = 0; i < len; ++i) {
+		buf[11 + i] = in[i];
+	}
+	if (is_left) {
+		if (global_counter[is_left] == 0xf) global_counter[is_left] = 0;
+		else ++global_counter[is_left];
+	}
+	else {
+		if (global_counter[is_left] == 0xf) global_counter[is_left] = 0;
+		else ++global_counter[is_left];
+	}
+	//for (int i = 0; i < 15; ++i) {
+	//	printf("%x ", buf[i]);
+	//}
+	//printf("\n");
+	hid_write(joycon, buf, OUT_BUFFER_SIZE);
+	if (get_response) {
+		int n = hid_read_timeout(joycon, data, DATA_BUFFER_SIZE, 50);
+
+		/*printf("response: ");
+		for (int i = 0; i < 35; ++i) {
+			printf("%x ", data[i]);
+		}
+		printf("\n");
+
+		if (data[14] != comm) {
+			printf("subcomm return fail\n");
+		}
+		else printf("subcomm return correct\n");
+		*/
+	}
+}
+
+u8* read_spi(hid_device *jc, u8 addr1, u8 addr2, int len, u8 is_left)
+{
+	u8 buf[] = { addr2, addr1, 0x00, 0x00, (u8)len };
+	int tries = 0;
+	do {
+		++tries;
+		subcomm(jc, buf, 5, 0x10, 1, is_left);
+	} while (tries < 10 && !(data[15] == addr2 && data[16] == addr1));
+	return data + 20;
+}
+
+void get_stick_cal(hid_device* jc, u8 is_left)
+{
+	// dump calibration data
+	u8* out = read_spi(jc, 0x80, is_left ? 0x12 : 0x1d, 9, is_left);
+	u8 found = 0;
+	for (int i = 0; i < 9; ++i)
+	{
+		if (out[i] != 0xff)
+		{
+			// User calibration data found
+			std::cout << "user cal found" << std::endl;
+			found = 1;
+			break;
+		}
+	}
+	if (!found)
+	{
+		std::cout << "User cal not found" << std::endl;
+		out = read_spi(jc, 0x60, is_left ? 0x3d : 0x46, 9, is_left);
+	}
+	stick_cal[is_left ? 4 : 7]  = ((out[7] << 8) & 0xf00) | out[6]; // X Min below center
+	stick_cal[is_left ? 5 : 8]  = ((out[8] << 4) | (out[7] >> 4));  // Y Min below center
+	stick_cal[is_left ? 0 : 9]  = ((out[1] << 8) & 0xf00) | out[0]; // X Max above center
+	stick_cal[is_left ? 1 : 10] = ((out[2] << 4) | (out[1] >> 4));  // Y Max above center
+	stick_cal[is_left ? 2 : 11] = ((out[4] << 8) & 0xf00 | out[3]); // X Center
+	stick_cal[is_left ? 3 : 12] = ((out[5] << 4) | (out[4] >> 4));  // Y Center
+	out = read_spi(jc, 0x60, is_left ? 0x86 : 0x98, 9, is_left);
+	stick_cal[is_left ? 6 : 13] = ((out[4] << 8) & 0xF00 | out[3]);			   // Deadzone
+}
+
+void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
+	u8 send_buf = 0x3f;
+	subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
+	get_stick_cal(jc, is_left);	
+/*	TODO: improve bluetooth pairing
+	send_buf = 0x1;
+	subcomm(jc, &send_buf, 1, 0x1, 1, is_left);
+	send_buf = 0x2;
+	subcomm(jc, &send_buf, 1, 0x1, 1, is_left);
+	send_buf = 0x3;
+	subcomm(jc, &send_buf, 1, 0x1, 1, is_left);*/
+	send_buf = leds;
+	subcomm(jc, &send_buf, 1, 0x30, 1, is_left);
+	send_buf = 0x30;
+	subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
+}
+
 void initialize_left_joycon() {
   struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
   if(left_joycon_info != NULL) std::cout << " => found left Joy-Con" << std::endl;
@@ -257,6 +371,8 @@ void initialize_left_joycon() {
     getchar();
     exit(1);
   }
+
+  setup_joycon(left_joycon, 0x1, 1);
 }
 
 void initialize_right_joycon() {
@@ -280,6 +396,10 @@ void initialize_right_joycon() {
     getchar();
     exit(1);
   }
+  setup_joycon(right_joycon, 0x1, 0);
+
+
+
 }
 
 void initialize_xbox() {
@@ -308,6 +428,38 @@ void disconnect_exit() {
   vigem_disconnect(client);
   vigem_free(client);
   exit(0);
+}
+
+void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
+	u16 raw[] = { (uint16_t)(a | ((b & 0xf) << 8)), \
+						 (uint16_t)((b >> 4) | (c << 4)) };
+	float s[] = { 0, 0 };
+	u8 offset = is_left ? 0 : 7;
+	for (u8 i = 0; i < 2; ++i)
+	{
+		s[i] = (raw[i] - stick_cal[i + 2 + offset]);
+		if (abs(s[i]) < stick_cal[6 + offset]) s[i] = 0; // inside deadzone
+		else if (s[i] > 0)						// axis is above center
+		{
+			s[i] /= stick_cal[i + offset];
+		}
+		else									// axis is below center
+		{
+			s[i] /= stick_cal[i + 4 + offset];
+		}
+		if (s[i] > 1)  s[i] = 1;
+		if (s[i] < -1) s[i] = -1;
+		s[i] *= (XBOX_ANALOG_MAX);
+	}
+
+	if (is_left) {
+		report.sThumbLX = (SHORT)s[0];
+		report.sThumbLY = (SHORT)s[1];
+	}
+	else {
+		report.sThumbRX = (SHORT)s[0];
+		report.sThumbRY = (SHORT)s[1];
+	}
 }
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
@@ -529,37 +681,66 @@ inline void region_part(unsigned char data, JOYCON_REGION region, JOYCON_BUTTON 
 void process_left_joycon() {
   report.bLeftTrigger = 0;
   left_buttons = 0;
-  region_part(data[1], LEFT_DPAD, L_DPAD_UP);
-  region_part(data[1], LEFT_DPAD, L_DPAD_DOWN);
-  region_part(data[1], LEFT_DPAD, L_DPAD_LEFT);
-  region_part(data[1], LEFT_DPAD, L_DPAD_RIGHT);
-  region_part(data[1], LEFT_DPAD, L_DPAD_SL);
-  region_part(data[1], LEFT_DPAD, L_DPAD_SR);
-  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
-  region_part(data[2], LEFT_AUX, L_TRIGGER);
-  region_part(data[2], LEFT_AUX, L_SHOULDER);
-  region_part(data[2], LEFT_AUX, L_CAPTURE);
-  region_part(data[2], LEFT_AUX, L_MINUS);
-  region_part(data[2], LEFT_AUX, L_STICK);
+  u8 offset = 0;
+  u8 shift = 0;
+  u8 offset2 = 0;
+  if (data[0] == 0x30 || data[0] == 0x21) {
+	  // 0x30 input reports order the button status data differently
+	  // this approach is ugly, but doesn't require changing the enum
+	  offset = 2;
+	  offset2 = 3;
+	  shift = 1;
+	  process_stick(true, data[6], data[7], data[8]);
+  }
+  else {
+	  process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
+  }
+  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_UP);
+  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_DOWN);
+  region_part(data[1 + offset*2]>>(shift*3), LEFT_DPAD, L_DPAD_LEFT);
+  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_RIGHT);
+  region_part(data[1 + offset*2]>>shift, LEFT_DPAD, L_DPAD_SL);
+  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_SR);
+  region_part(data[2 + offset2], LEFT_AUX, L_TRIGGER);
+  region_part(data[2 + offset2], LEFT_AUX, L_SHOULDER);
+  region_part(data[2 + offset], LEFT_AUX, L_CAPTURE);
+  region_part(data[2 + offset], LEFT_AUX, L_MINUS);
+  region_part(data[2 + offset]>>shift, LEFT_AUX, L_STICK);
   report.wButtons = right_buttons | left_buttons;
 }
 
 void process_right_joycon() {
   report.bRightTrigger = 0;
   right_buttons = 0;
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_A);
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_B);
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_X);
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_Y);
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_SL);
-  region_part(data[1], RIGHT_BUTTONS, R_BUT_SR);
-  process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
-  region_part(data[2], RIGHT_AUX, R_TRIGGER);
-  region_part(data[2], RIGHT_AUX, R_SHOULDER);
-  region_part(data[2], RIGHT_AUX, R_HOME);
-  region_part(data[2], RIGHT_AUX, R_PLUS);
-  region_part(data[2], RIGHT_AUX, R_STICK);
+  u8 offset = 0;
+  u8 shift = 0;
+  u8 offset2 = 0;
+  if (data[0] == 0x30 || data[0] == 0x21) {
+	  // 0x30 input reports order the button status data differently
+	  // this approach is ugly, but doesn't require changing the enum
+	  offset = 2;
+	  offset2 = 1;
+	  shift = 1;
+	  process_stick(false, data[9], data[10], data[11]);
+  } else process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(data[1 + offset]>>(shift*3), RIGHT_BUTTONS, R_BUT_A);
+  region_part(data[1 + offset], RIGHT_BUTTONS, R_BUT_B);
+  region_part(data[1 + offset], RIGHT_BUTTONS, R_BUT_X);
+  region_part(data[1 + offset]<<(shift*3), RIGHT_BUTTONS, R_BUT_Y);
+  region_part(data[1 + offset]>>shift, RIGHT_BUTTONS, R_BUT_SL);
+  region_part(data[1 + offset]<<shift, RIGHT_BUTTONS, R_BUT_SR);
+  region_part(data[2 + offset2], RIGHT_AUX, R_TRIGGER);
+  region_part(data[2 + offset2], RIGHT_AUX, R_SHOULDER);
+  region_part(data[2 + offset], RIGHT_AUX, R_HOME);
+  region_part(data[2 + offset], RIGHT_AUX, R_PLUS);
+  region_part(data[2 + offset]<<shift, RIGHT_AUX, R_STICK);
   report.wButtons = left_buttons | right_buttons;
+}
+
+void joycon_cleanup(hid_device *jc, u8 is_left)
+{
+	u8 send_buf = 0x3f;
+	subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
 }
 
 DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
@@ -568,7 +749,7 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
   initialize_left_joycon();
   ReleaseMutex(report_mutex);
   for(;;) {
-    if(kill_threads) return 0;
+    if(kill_threads) break;
     hid_read(left_joycon, data, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
     process_left_joycon();
@@ -576,6 +757,7 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
     std::cout << std::endl;
     ReleaseMutex(report_mutex);
   }
+  joycon_cleanup(left_joycon, 1);
   return 0;
 }
 
@@ -585,7 +767,7 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   initialize_right_joycon();
   ReleaseMutex(report_mutex);
   for(;;) {
-    if(kill_threads) return 0;
+    if(kill_threads) break;
     hid_read(right_joycon, data, DATA_BUFFER_SIZE);
     WaitForSingleObject(report_mutex, INFINITE);
     process_right_joycon();
@@ -593,6 +775,7 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
     std::cout << std::endl;
     ReleaseMutex(report_mutex);
   }
+  joycon_cleanup(right_joycon, 0);
   return 0;
 }
 
