@@ -11,7 +11,7 @@ XJoy is a free product that I work on in my free time, so any contributions are 
 
 ## Installation
 
-1. [Install the ViGEm Bus Driver](https://docs.vigem.org/#!vigem-bus-driver-installation.md)
+1. [Install the ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases/tag/v1.16.112) (install all requirements as well)
 2. Install the [Visual C++ Redistributable for Visual Studio 2017](https://go.microsoft.com/fwlink/?LinkId=746572)
 2. Download the latest zip from the [releases page](https://github.com/sam0x17/XJoy/releases) and extract it somewhere permanent like your
 Documents folder
