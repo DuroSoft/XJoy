@@ -68,8 +68,8 @@ mappings are shown below:
 | Left Shoulder      | Left Shoulder  |
 | Right Shoulder     | Right Shoulder |
 | D-PAD              | D-PAD          |
-| Left 8-way Analog  | Left Analog    |
-| Right 8-way Analog | Right Analog   |
+| Left Analog        | Left Analog    |
+| Right Analog       | Right Analog   |
 | Left Stick         | Left Thumb     |
 | Right Stick        | Right Thumb    |
 | Home               | Start          |
