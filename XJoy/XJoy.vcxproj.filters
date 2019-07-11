@@ -26,7 +26,7 @@
     <ClInclude Include="resource2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Yaml.hpp">
+    <ClInclude Include="..\Include\cpptoml.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -37,14 +37,14 @@
     <ClCompile Include="XJoy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Yaml.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="XJoy.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="XJoy.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>
