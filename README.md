@@ -86,7 +86,7 @@ least on my end it _seems_ to be working in Visual Studio 2019 as well, which is
 
 ## Contributing
 1. create a fork for your feature/bugfix/whatever
-2. make your additions/modifications, following our [C++ Style Guide](style_guide.md)
+2. make your additions/modifications, following our [C++ Coding Style Guidelines](style_guide.md)
 3. test your changes, doing your best to ensure you aren't introducing any environment-specific
    behavior that may cause issues for users without your exact setup. XJoy's target audience is
    freshly installed Windows 10 users who have followed the ViGEm installation instructions.

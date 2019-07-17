@@ -1,4 +1,4 @@
-# Coding Style Guidelines
+# C++ Coding Style Guidelines
 * unix-style line breaks, UTF-8 file encoding
 * indent with two spaces (no tabs)
 * `{` should be at the end of the relevant line, not on a new line
