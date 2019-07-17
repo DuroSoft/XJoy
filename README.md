@@ -81,4 +81,59 @@ mappings are shown below:
 
 If you wish to build XJoy yourself, simply install the ViGEm Bus Driver as outlined in the
 installation steps, open the XJoy.sln file in Visual Studio 2017, and build. Everything
-should work out of the box but if it does not feel free to submit an issue.
+should work out of the box but if it does not feel free to submit an issue. Note that at
+least on my end it _seems_ to be working in Visual Studio 2019 as well, which is good.
+
+## Coding Style Guidelines
+* unix-style line breaks, UTF-8 file encoding
+* indent with two spaces (no tabs)
+* `{` should be at the end of the relevant line, not on a new line
+* opening parenthesis after a control statement should not be preceded by a space -
+  `if(` (good), `for(` (good), `while(` (good), `if (` (bad), etc.
+* always indent the contents of a `switch` statement, and likewise always indent the contents of
+  each `case` unless it is a one-liner (which is totally fine);
+* prefer breaking/returning early over complicated if/else chains
+* prefer `for(;;) {` for infinite loops
+* indent one space after `//` when commenting (`// example comment`)
+* prefer `//` over multi-line comment syntax (looks better)
+* prefer no blank lines within functions, but acceptable if things get crazy
+* prefer one-line if/while/etc statements when possible
+* prefer two-line if/else when possible
+* separate functions and classes with a single blank line
+
+### Example:
+
+```C++
+if(boolean_expression) i++;
+else cool_thing();
+if(!another_expression) {
+  crazy_variable--;
+  awesome_stuff();
+} else if(other_thing) {
+  wicked();
+} else {
+  thats_cool();
+}
+switch(state) {
+  case 0:
+    std::cout << "it was zero" << std::endl;
+    break;
+  case 1:
+    std::cout << "it was one" << std::endl;
+    break;
+}
+while(something) something_else();
+for(;;) {
+  // infinite loop
+  if(condition) return;
+}
+```
+
+## Contributing
+1. create a fork for your feature/bugfix/whatever
+2. make your additions/modifications
+3. test your changes, doing your best to ensure you aren't introducing any environment-specific
+   behavior that may cause issues for users without your exact setup. XJoy's target audience is
+   freshly installed Windows 10 users who have followed the ViGEm installation instructions.
+4. follow the above code style guidelines
+5. submit a pull request
