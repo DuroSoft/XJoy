@@ -323,7 +323,7 @@ void get_stick_cal(hid_device* jc, u8 is_left) {
 void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
   u8 send_buf = 0x3f;
   subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
-  get_stick_cal(jc, is_left);  
+  get_stick_cal(jc, is_left);
 /*  TODO: improve bluetooth pairing
   send_buf = 0x1;
   subcomm(jc, &send_buf, 1, 0x1, 1, is_left);
