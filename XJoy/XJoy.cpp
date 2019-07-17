@@ -262,14 +262,8 @@ void subcomm(hid_device* joycon, u8* in, u8 len, u8 comm, u8 get_response, u8 is
 	for (int i = 0; i < len; ++i) {
 		buf[11 + i] = in[i];
 	}
-	if (is_left) {
-		if (global_counter[is_left] == 0xf) global_counter[is_left] = 0;
-		else ++global_counter[is_left];
-	}
-	else {
-		if (global_counter[is_left] == 0xf) global_counter[is_left] = 0;
-		else ++global_counter[is_left];
-	}
+  if (global_counter[is_left] == 0xf) global_counter[is_left] = 0;
+  else ++global_counter[is_left];
 	//for (int i = 0; i < 15; ++i) {
 	//	printf("%x ", buf[i]);
 	//}
