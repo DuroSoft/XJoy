@@ -307,14 +307,14 @@ void get_stick_cal(hid_device* jc, u8 is_left)
 		if (out[i] != 0xff)
 		{
 			// User calibration data found
-			std::cout << "user cal found" << std::endl;
+			std::cout << "warning: user calibration data not found" << std::endl;
 			found = 1;
 			break;
 		}
 	}
 	if (!found)
 	{
-		std::cout << "User cal not found" << std::endl;
+		std::cout << "warning: user calibration data not found" << std::endl;
 		out = read_spi(jc, 0x60, is_left ? 0x3d : 0x46, 9, is_left);
 	}
 	stick_cal[is_left ? 4 : 7]  = ((out[7] << 8) & 0xf00) | out[6]; // X Min below center
