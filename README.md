@@ -90,5 +90,4 @@ least on my end it _seems_ to be working in Visual Studio 2019 as well, which is
 3. test your changes, doing your best to ensure you aren't introducing any environment-specific
    behavior that may cause issues for users without your exact setup. XJoy's target audience is
    freshly installed Windows 10 users who have followed the ViGEm installation instructions.
-4. follow the above code style guidelines
-5. submit a pull request
+4. submit a pull request
