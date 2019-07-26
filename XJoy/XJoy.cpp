@@ -425,10 +425,12 @@ void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
   for(u8 i = 0; i < 2; ++i) {
     s[i] = (raw[i] - stick_cal[i + 2 + offset]);
     if(abs(s[i]) < stick_cal[6 + offset]) s[i] = 0; // inside deadzone
-    else if(s[i] > 0)            // axis is above center{
+    else if(s[i] > 0) {
+      // axis is above center
       s[i] /= stick_cal[i + offset];
     }
-    else                  // axis is below center{
+    else {
+      // axis is below center
       s[i] /= stick_cal[i + 4 + offset];
     }
     if(s[i] > 1)  s[i] = 1;
