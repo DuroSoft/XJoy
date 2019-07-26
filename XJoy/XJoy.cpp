@@ -428,8 +428,7 @@ void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
     else if(s[i] > 0) {
       // axis is above center
       s[i] /= stick_cal[i + offset];
-    }
-    else {
+    } else {
       // axis is below center
       s[i] /= stick_cal[i + 4 + offset];
     }
