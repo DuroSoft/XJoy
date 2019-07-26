@@ -317,7 +317,7 @@ void get_stick_cal(hid_device* jc, u8 is_left) {
   stick_cal[is_left ? 2 : 11] = ((out[4] << 8) & 0xf00 | out[3]); // X Center
   stick_cal[is_left ? 3 : 12] = ((out[5] << 4) | (out[4] >> 4));  // Y Center
   out = read_spi(jc, 0x60, is_left ? 0x86 : 0x98, 9, is_left);
-  stick_cal[is_left ? 6 : 13] = ((out[4] << 8) & 0xF00 | out[3]);         // Deadzone
+  stick_cal[is_left ? 6 : 13] = ((out[4] << 8) & 0xF00 | out[3]); // Deadzone
 }
 
 void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
@@ -424,14 +424,9 @@ void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
   u8 offset = is_left ? 0 : 7;
   for(u8 i = 0; i < 2; ++i) {
     s[i] = (raw[i] - stick_cal[i + 2 + offset]);
-    if(abs(s[i]) < stick_cal[6 + offset]) s[i] = 0; // inside deadzone
-    else if(s[i] > 0) {
-      // axis is above center
-      s[i] /= stick_cal[i + offset];
-    } else {
-      // axis is below center
-      s[i] /= stick_cal[i + 4 + offset];
-    }
+    if(abs(s[i]) < stick_cal[6 + offset]) s[i] = 0;  // inside deadzone
+    else if(s[i] > 0) s[i] /= stick_cal[i + offset]; // axis is above center
+    else s[i] /= stick_cal[i + 4 + offset];          // axis is below center
     if(s[i] > 1)  s[i] = 1;
     if(s[i] < -1) s[i] = -1;
     s[i] *= (XBOX_ANALOG_MAX);
