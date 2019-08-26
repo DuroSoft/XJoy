@@ -52,9 +52,9 @@ initializing threads...
 ## Customization
 
 Right now all buttons are hard-coded to their "default" xbox equivalents. If you wish to
-customize these mappings, feel free to modify the `process_button` method in XJoy.cpp. I
-plan to add support for a configuration file and maybe a GUI in later versions. The default
-mappings are shown below:
+customize these mappings, feel free to modify the `process_button` method in XJoy.cpp and
+recompile yourself. I plan to add support for a configuration file and maybe a GUI in later
+versions. The default mappings are shown below:
 
 
 | Joy-Con Button     | Xbox Button    |
