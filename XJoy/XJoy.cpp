@@ -733,7 +733,6 @@ DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
     WaitForSingleObject(report_mutex, INFINITE);
     process_left_joycon();
     vigem_target_x360_update(client, target, report);
-    std::cout << std::endl;
     ReleaseMutex(report_mutex);
   }
   joycon_cleanup(left_joycon, 1);
@@ -751,7 +750,6 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
     WaitForSingleObject(report_mutex, INFINITE);
     process_right_joycon();
     vigem_target_x360_update(client, target, report);
-    std::cout << std::endl;
     ReleaseMutex(report_mutex);
   }
   joycon_cleanup(right_joycon, 0);
