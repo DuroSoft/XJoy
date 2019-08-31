@@ -12,7 +12,7 @@ XJoy is a free product that I work on in my free time, so any contributions are 
 
 ## Note
 Currently the newer versions containing analog support appear to have some issues. I recommend using the last version
-before analog support was introduced [https://github.com/sam0x17/XJoy/releases/tag/v0.1.8](v0.1.8).
+before analog support was introduced [v0.1.8](https://github.com/sam0x17/XJoy/releases/tag/v0.1.8).
 
 ## Installation
 
