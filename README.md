@@ -9,6 +9,11 @@ XJoy is a free product that I work on in my free time, so any contributions are 
 
 [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8DTF7NWTZX7ZJ)
 
+
+## Note
+Currently the newer versions containing analog support appear to have some issues. I recommend using the last version
+before analog support was introduced (https://github.com/sam0x17/XJoy/releases/tag/v0.1.8)[v0.1.8].
+
 ## Installation
 
 1. [Install the ViGEm Bus Driver](https://github.com/ViGEm/ViGEmBus/releases/tag/v1.16.112) (install all requirements as well)
