@@ -339,8 +339,8 @@ void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
 
 void initialize_left_joycon() {
   struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
-  if(left_joycon_info != NULL) std::cout << " => found left Joy-Con" << std::endl;
-  else {
+
+  if(left_joycon_info == NULL) {
     std::cout << " => could not find left Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
@@ -348,6 +348,13 @@ void initialize_left_joycon() {
     getchar();
     exit(1);
   }
+
+  while (left_joycon_info->next != NULL) {
+      left_joycon_info = left_joycon_info->next;
+  }
+
+  std::cout << " => found left Joy-Con" << std::endl;
+
   left_joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
   if(left_joycon != NULL) std::cout << " => successfully connected to left Joy-Con" << std::endl;
   else {
@@ -364,8 +371,8 @@ void initialize_left_joycon() {
 
 void initialize_right_joycon() {
   struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
-  if(right_joycon_info != NULL) std::cout << " => found right Joy-Con" << std::endl;
-  else {
+
+  if(right_joycon_info == NULL) {
     std::cout << " => could not find right Joy-Con" << std::endl;
     hid_exit();
     vigem_free(client);
@@ -373,6 +380,12 @@ void initialize_right_joycon() {
     getchar();
     exit(1);
   }
+
+  while (right_joycon_info->next != NULL) {
+      right_joycon_info = right_joycon_info->next;
+  }
+
+  std::cout << " => found right Joy-Con" << std::endl;
   right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
   if(right_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
   else {
