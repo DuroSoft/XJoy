@@ -339,6 +339,7 @@ void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
 
 void initialize_left_joycon() {
   struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
+  int counter = 1;
 
   if(left_joycon_info == NULL) {
     std::cout << " => could not find left Joy-Con" << std::endl;
@@ -350,6 +351,7 @@ void initialize_left_joycon() {
   }
 
   while (left_joycon_info->next != NULL) {
+      counter++;
       left_joycon_info = left_joycon_info->next;
   }
 
@@ -366,11 +368,12 @@ void initialize_left_joycon() {
     exit(1);
   }
 
-  setup_joycon(left_joycon, 0x1, 1);
+  setup_joycon(left_joycon, counter, 1);
 }
 
 void initialize_right_joycon() {
   struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
+  int counter = 1;
 
   if(right_joycon_info == NULL) {
     std::cout << " => could not find right Joy-Con" << std::endl;
@@ -382,6 +385,7 @@ void initialize_right_joycon() {
   }
 
   while (right_joycon_info->next != NULL) {
+      counter++;
       right_joycon_info = right_joycon_info->next;
   }
 
@@ -396,7 +400,7 @@ void initialize_right_joycon() {
     getchar();
     exit(1);
   }
-  setup_joycon(right_joycon, 0x1, 0);
+  setup_joycon(right_joycon, counter, 0);
 
 
 
