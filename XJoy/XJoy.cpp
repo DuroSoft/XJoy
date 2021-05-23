@@ -461,7 +461,7 @@ void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
 
 void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
   if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
-  std::cout << joycon_button_to_string(region, button) << " ";
+  std::cout << joycon_button_to_string(region, button) << std::endl;
   auto got = button_mappings.find(button);
   if(got != button_mappings.end()) {
     XUSB_BUTTON target = got->second;
