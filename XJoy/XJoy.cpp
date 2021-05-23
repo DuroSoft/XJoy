@@ -8,10 +8,12 @@
 #include <tuple>
 #include <unordered_map>
 #include "Yaml.hpp"
+#include "hidapi_log.h"
 
+#pragma comment(lib, "SetupAPI")
 
-#define u8 uint8_t
-#define u16 uint16_t
+bool enable_traffic_dump = false;
+
 
 const unsigned short NINTENDO = 1406; // 0x057e
 const unsigned short JOYCON_L = 8198; // 0x2006
@@ -21,6 +23,82 @@ const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+
+u8 timming_byte;
+
+#pragma pack(push, 1)
+
+
+struct brcm_hdr {
+	u8 cmd;
+	u8 timer;
+	u8 rumble_l[4];
+	u8 rumble_r[4];
+};
+
+struct brcm_cmd_01 {
+	u8 subcmd;
+	union {
+		struct {
+			u32 offset;
+			u8 size;
+		} spi_data;
+
+		struct {
+			u8 arg1;
+			u8 arg2;
+		} subcmd_arg;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  mcu_mode;
+		} subcmd_21_21;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  no_of_reg;
+			u16 reg1_addr;
+			u8  reg1_val;
+			u16 reg2_addr;
+			u8  reg2_val;
+			u16 reg3_addr;
+			u8  reg3_val;
+			u16 reg4_addr;
+			u8  reg4_val;
+			u16 reg5_addr;
+			u8  reg5_val;
+			u16 reg6_addr;
+			u8  reg6_val;
+			u16 reg7_addr;
+			u8  reg7_val;
+			u16 reg8_addr;
+			u8  reg8_val;
+			u16 reg9_addr;
+			u8  reg9_val;
+		} subcmd_21_23_04;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  mcu_ir_mode;
+			u8  no_of_frags;
+			u16 mcu_major_v;
+			u16 mcu_minor_v;
+		} subcmd_21_23_01;
+	};
+};
+
+#pragma pack(pop)
 #define DATA_BUFFER_SIZE 49
 #define OUT_BUFFER_SIZE 49
 u8 data[DATA_BUFFER_SIZE];
@@ -335,6 +413,325 @@ void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
   subcomm(jc, &send_buf, 1, 0x30, 1, is_left);
   send_buf = 0x30;
   subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
+}
+
+void inc_timming() {
+	timming_byte++;
+}
+
+int set_led_busy(hid_device* handle, const unsigned short product_id) {
+	int res;
+	u8 buf[49];
+	memset(buf, 0, sizeof(buf));
+	auto hdr = (brcm_hdr *)buf;
+	auto pkt = (brcm_cmd_01 *)(hdr + 1);
+	hdr->cmd = 0x01;
+	hdr->timer = timming_byte & 0xF;
+	inc_timming();
+	pkt->subcmd = 0x30;
+	pkt->subcmd_arg.arg1 = 0x81;
+	res = hid_write(handle, buf, sizeof(buf));
+	res = hid_read_timeout(handle, buf, 0, 64);
+
+	//Set breathing HOME Led
+	if (product_id != JOYCON_L) {
+		memset(buf, 0, sizeof(buf));
+		hdr = (brcm_hdr *)buf;
+		pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 0x01;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x38;
+		pkt->subcmd_arg.arg1 = 0x28;
+		pkt->subcmd_arg.arg2 = 0x20;
+		buf[13] = 0xF2;
+		buf[14] = buf[15] = 0xF0;
+		res = hid_write(handle, buf, sizeof(buf));
+		res = hid_read_timeout(handle, buf, 0, 64);
+	}
+
+	return 0;
+}
+
+int silence_input_report(hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+
+	bool loop = true;
+
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x03;
+		pkt->subcmd_arg.arg1 = 0x3f;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x0380) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 4)
+			break;
+	}
+
+	return 0;
+}
+
+std::string get_sn(u32 offset, const u16 read_len, hid_device* handle) {
+	int res;
+	int error_reading = 0;
+	u8 buf[49];
+	std::string sn = "";
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x10;
+		pkt->spi_data.offset = offset;
+		pkt->spi_data.size = read_len;
+		res = hid_write(handle, buf, sizeof(buf));
+
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if ((*(u16*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
+				loop = false;
+				break;
+			}
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+
+		if (!loop) {
+			break;
+		}
+
+		error_reading++;
+		if (error_reading > 20)
+			return "Error!";
+	}
+	
+	if (res >= 0x14 + read_len) {
+		for (int i = 0; i < read_len; i++) {
+			if (buf[0x14 + i] != 0x000) {
+				sn += buf[0x14 + i];
+			}
+			else
+				sn += "";
+		}
+	}
+	else {
+		return "Error!";
+	}
+	return sn;
+}
+
+int get_battery(u8* test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+
+	int error_reading = 0;
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x50;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x50D0) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			break;
+	}
+
+	test_buf[0] = buf[0x2];
+	test_buf[1] = buf[0xF];
+	test_buf[2] = buf[0x10];
+
+	return 0;
+}
+
+std::string get_battery_str(hid_device* handle) {
+	unsigned char batt_info[3];
+	memset(batt_info, 0, sizeof(batt_info));
+
+	get_battery(batt_info, handle);
+
+	int batt_percent = 0;
+	int batt = ((u8)batt_info[0] & 0xF0) >> 4;
+
+	// Calculate aproximate battery percent from regulated voltage
+	u16 batt_volt = (u8)batt_info[1] + ((u8)batt_info[2] << 8);
+	if (batt_volt < 0x560)
+		batt_percent = 1;
+	else if (batt_volt > 0x55F && batt_volt < 0x5A0) {
+		batt_percent = ((batt_volt - 0x60) & 0xFF) / 7.0f + 1;
+	}
+	else if (batt_volt > 0x59F && batt_volt < 0x5E0) {
+		batt_percent = ((batt_volt - 0xA0) & 0xFF) / 2.625f + 11;
+	}
+	else if (batt_volt > 0x5DF && batt_volt < 0x618) {
+		batt_percent = (batt_volt - 0x5E0) / 1.8965f + 36;
+	}
+	else if (batt_volt > 0x617 && batt_volt < 0x658) {
+		batt_percent = ((batt_volt - 0x18) & 0xFF) / 1.8529f + 66;
+	}
+	else if (batt_volt > 0x657)
+		batt_percent = 100;
+
+	char buf[20];
+	sprintf_s(buf, "%.2fV - %d%%", (batt_volt * 2.5) / 1000, batt_percent);
+	return buf;
+}
+
+int get_spi_data(u32 offset, const u16 read_len, u8 *test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x10;
+		pkt->spi_data.offset = offset;
+		pkt->spi_data.size = read_len;
+		res = hid_write(handle, buf, sizeof(buf));
+
+		int retries = 0;
+		bool loop = true;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if ((*(u16*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			return 1;
+	}
+	
+	if (res >= 0x14 + read_len) {
+		for (int i = 0; i < read_len; i++) {
+			test_buf[i] = buf[0x14 + i];
+		}
+	}
+
+	return 0;
+}
+
+unsigned char* get_colors(hid_device* handle) {
+	unsigned char* spiColors = (unsigned char*)malloc(12);
+	memset(spiColors, 0, 12); 
+
+	int res = get_spi_data(0x6050, 12, spiColors, handle);
+
+	return spiColors;
+}
+
+int get_device_info(u8* test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x02;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x0282) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			break;
+	}
+	for (int i = 0; i < 0xA; i++) {
+		test_buf[i] = buf[0xF + i];
+	}
+
+	return 0;
+}
+
+std::string get_mac(hid_device* handle) {
+	unsigned char device_info[10];
+	memset(device_info, 0, sizeof(device_info));
+
+	get_device_info(device_info, handle);
+
+	char buf[20];
+	//Firmware
+	//sprintf_s(buf, "%02X.%02X",
+	//	device_info[0], device_info[1]);
+
+	sprintf_s(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
+		device_info[4], device_info[5], device_info[6], device_info[7], device_info[8], device_info[9]);
+	return buf;
 }
 
 void initialize_left_joycon() {
