@@ -787,12 +787,70 @@ void exit_handler(int signum) {
   exit(signum);
 }
 
-int main() {
+void show_list(std::string name) {
+	std::cout << "Available devices:" << std::endl;
+
+	int left_counter = 0;
+	struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
+	do {
+		if (left_joycon_info == NULL)
+			break;
+		std::cout << "- Joycon Left, WRT234234342342, #1C1C1C" << std::endl;
+		left_counter++;
+		left_joycon_info = left_joycon_info->next;
+	} while (left_joycon_info != NULL);
+
+	int right_counter = 0;
+	struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
+	do {
+		if (right_joycon_info == NULL)
+			break;
+		std::cout << "- Joycon Right, WYA56346345345, #CC0000" << std::endl;
+		right_counter++;
+		right_joycon_info = right_joycon_info->next;
+	} while (right_joycon_info != NULL);
+
+	if (left_counter == 0 && right_counter == 0)
+		std::cout << "  No joycons available, sync with OS first" << std::endl;
+
+}
+
+void show_usage(std::string name) {
+	std::cout << "XJoy v0.2.0" << std::endl << std::endl;
+	std::cout << "Configure joy cons" << std::endl << std::endl;
+	std::cout << "Options:" << std::endl;
+	std::cout << "/L	List existing joy cons" << std::endl;
+	std::cout << "/V	Show XJoy version" << std::endl;
+	std::cout << "/?	Show this help" << std::endl << std::endl;
+}
+
+void show_version() {
+	std::cout << "XJoy v0.2.0" << std::endl << std::endl;
+}
+
+int main(int argc, char *argv[]) {
   signal(SIGINT, exit_handler);
-  std::cout << "XJoy v0.2.0" << std::endl << std::endl;
+
+  hid_init();
+
+  std::string name = argv[0];
+  for (int i = 1; i < argc; ++i) {
+	  std::string arg = argv[i];
+	  if (arg == "/H") {
+		  show_usage(name);
+		  return 0;
+	  }
+	  else if (arg == "/V") {
+		  show_version();
+		  return 0;
+	  }
+	  else if (arg == "/L") {
+		  show_list(name);
+		  return 0;
+	  }
+  }
 
   initialize_xbox();
-  hid_init();
 
   std::cout << std::endl;
   std::cout << "initializing threads..." << std::endl;
