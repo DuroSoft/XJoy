@@ -14,10 +14,14 @@
 
 bool enable_traffic_dump = false;
 
+const unsigned short NINTENDO = 0x057e;
 
-const unsigned short NINTENDO = 1406; // 0x057e
-const unsigned short JOYCON_L = 8198; // 0x2006
-const unsigned short JOYCON_R = 8199; // 0x2007
+const unsigned short SWITCH = 0x2000;
+const unsigned short JOYCON_L = 0x2006;
+const unsigned short JOYCON_R = 0x2007;
+const unsigned short PRO_CONTROLLER = 0x2009;
+const unsigned short CHARGING_GRIP = 0x200e;
+
 const int XBOX_ANALOG_MIN = -32768;
 const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
