@@ -21,6 +21,21 @@ const unsigned short JOYCON_R = 0x2007;
 const unsigned short PRO_CONTROLLER = 0x2009;
 const unsigned short CHARGING_GRIP = 0x200e;
 
+const std::string GRAY = "#828282";
+const std::string HORI_RED = "#F62200";
+const std::string NEON_RED = "#FF3C28";
+const std::string NEON_BLUE = "#0AB9E6";
+const std::string NEON_YELLOW = "#E6FF00";
+const std::string NEON_GREEN = "#1EDC00";
+const std::string NEON_PINK = "#FF3278";
+const std::string BLUE = "#4655E6";
+const std::string NEON_PURPLE = "#B400F5";
+const std::string NEON_ORANGE = "#FAA005";
+
+const std::string ANIMAL_CROSSING_BLUE = "#96F5F5";
+const std::string ANIMAL_CROSSING_GREEN = "#82FF92";
+
+
 const int XBOX_ANALOG_MIN = -32768;
 const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
@@ -1187,6 +1202,47 @@ void exit_handler(int signum) {
   exit(signum);
 }
 
+std::string get_body_color(unsigned char* spiColors) {
+	char color[10];
+	sprintf_s(color, "#%02X%02X%02X", (u8)spiColors[0], (u8)spiColors[1], (u8)spiColors[2]);
+	std::string col = color;
+	if (ANIMAL_CROSSING_BLUE.compare(color) == 0) {
+		col = "Animal crossing Blue";
+	} else if (ANIMAL_CROSSING_GREEN.compare(color) == 0) {
+		col = "Animal crossing Green";
+	} else if (NEON_BLUE.compare(color) == 0) {
+		col = "Neon Blue";
+	} else if (NEON_RED.compare(color) == 0) {
+		col = "Neon Red";
+	} else if (HORI_RED.compare(color) == 0) {
+		col = "HORI Red";
+	} else if (GRAY.compare(color) == 0) {
+		col = "Gray";
+	} else if (NEON_YELLOW.compare(color) == 0) {
+		col = "Neon Yellow";
+	} else if (NEON_GREEN.compare(color) == 0) {
+		col = "Neon Green";
+	} else if (NEON_PINK.compare(color) == 0) {
+		col = "Neon Pink";
+	} else if (BLUE.compare(color) == 0) {
+		col = "Blue";
+	} else if (NEON_PURPLE.compare(color) == 0) {
+		col = "Neon Purple";
+	} else if (NEON_ORANGE.compare(color) == 0) {
+		col = "Neon Orange";
+	}
+
+	return col;
+}
+
+void show_hidinfo(std::string prefix, const unsigned short product_id, wchar_t* hidserial) {
+	hid_device * joycon = hid_open(NINTENDO, product_id, hidserial);
+	if (joycon != NULL) {
+		unsigned char* spiColors = get_colors(joycon);
+		std::cout << "- "<< prefix << ", " << get_sn(0x6001, 0xF, joycon) << ", " << get_mac(joycon) << ", " << get_body_color(spiColors) << ", " << get_battery_str(joycon) << std::endl;
+	}
+}
+
 void show_list(std::string name) {
 	std::cout << "Available devices:" << std::endl;
 
@@ -1195,7 +1251,9 @@ void show_list(std::string name) {
 	do {
 		if (left_joycon_info == NULL)
 			break;
-		std::cout << "- Joycon Left, WRT234234342342, #1C1C1C" << std::endl;
+
+		show_hidinfo("Left Joycon ", JOYCON_L, left_joycon_info->serial_number);
+		
 		left_counter++;
 		left_joycon_info = left_joycon_info->next;
 	} while (left_joycon_info != NULL);
@@ -1205,7 +1263,8 @@ void show_list(std::string name) {
 	do {
 		if (right_joycon_info == NULL)
 			break;
-		std::cout << "- Joycon Right, WYA56346345345, #CC0000" << std::endl;
+		show_hidinfo("Right Joycon", JOYCON_R, right_joycon_info->serial_number);
+
 		right_counter++;
 		right_joycon_info = right_joycon_info->next;
 	} while (right_joycon_info != NULL);
