@@ -3,43 +3,129 @@
 #include "ViGEmClient.h"
 #include "hidapi.h"
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <csignal>
 #include <tuple>
 #include <unordered_map>
-#include "Yaml.hpp"
+#include "hidapi_log.h"
+#include <vector>
+#include <regex>
+
+#pragma comment(lib, "SetupAPI")
+
+bool enable_traffic_dump = false;
+
+const unsigned short NINTENDO = 0x057e;
+
+const unsigned short SWITCH = 0x2000;
+const unsigned short JOYCON_L = 0x2006;
+const unsigned short JOYCON_R = 0x2007;
+const unsigned short PRO_CONTROLLER = 0x2009;
+const unsigned short CHARGING_GRIP = 0x200e;
+
+const std::string GRAY = "#828282";
+const std::string HORI_RED = "#F62200";
+const std::string NEON_RED = "#FF3C28";
+const std::string NEON_BLUE = "#0AB9E6";
+const std::string NEON_YELLOW = "#E6FF00";
+const std::string NEON_GREEN = "#1EDC00";
+const std::string NEON_PINK = "#FF3278";
+const std::string BLUE = "#4655E6";
+const std::string NEON_PURPLE = "#B400F5";
+const std::string NEON_ORANGE = "#FAA005";
+
+const std::string ANIMAL_CROSSING_BLUE = "#96F5F5";
+const std::string ANIMAL_CROSSING_GREEN = "#82FF92";
 
 
-#define u8 uint8_t
-#define u16 uint16_t
-
-const unsigned short NINTENDO = 1406; // 0x057e
-const unsigned short JOYCON_L = 8198; // 0x2006
-const unsigned short JOYCON_R = 8199; // 0x2007
 const int XBOX_ANALOG_MIN = -32768;
 const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+
+u8 timming_byte;
+
+#pragma pack(push, 1)
+
+
+struct brcm_hdr {
+	u8 cmd;
+	u8 timer;
+	u8 rumble_l[4];
+	u8 rumble_r[4];
+};
+
+struct brcm_cmd_01 {
+	u8 subcmd;
+	union {
+		struct {
+			u32 offset;
+			u8 size;
+		} spi_data;
+
+		struct {
+			u8 arg1;
+			u8 arg2;
+		} subcmd_arg;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  mcu_mode;
+		} subcmd_21_21;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  no_of_reg;
+			u16 reg1_addr;
+			u8  reg1_val;
+			u16 reg2_addr;
+			u8  reg2_val;
+			u16 reg3_addr;
+			u8  reg3_val;
+			u16 reg4_addr;
+			u8  reg4_val;
+			u16 reg5_addr;
+			u8  reg5_val;
+			u16 reg6_addr;
+			u8  reg6_val;
+			u16 reg7_addr;
+			u8  reg7_val;
+			u16 reg8_addr;
+			u8  reg8_val;
+			u16 reg9_addr;
+			u8  reg9_val;
+		} subcmd_21_23_04;
+
+		struct {
+			u8  mcu_cmd;
+			u8  mcu_subcmd;
+			u8  mcu_ir_mode;
+			u8  no_of_frags;
+			u16 mcu_major_v;
+			u16 mcu_minor_v;
+		} subcmd_21_23_01;
+	};
+};
+
+#pragma pack(pop)
 #define DATA_BUFFER_SIZE 49
 #define OUT_BUFFER_SIZE 49
 u8 data[DATA_BUFFER_SIZE];
 u16 stick_cal[14];
 u8 global_counter[2] = { 0,0 };
 
-PVIGEM_CLIENT client = vigem_alloc();
-hid_device *left_joycon = NULL;
-hid_device *right_joycon = NULL;
-PVIGEM_TARGET target;
-XUSB_REPORT report;
-int res;
-HANDLE left_thread;
-DWORD left_thread_id;
-HANDLE right_thread;
-DWORD right_thread_id;
-HANDLE report_mutex;
-USHORT left_buttons = 0;
-USHORT right_buttons = 0;
 bool kill_threads = false;
 
 enum JOYCON_REGION {
@@ -320,104 +406,500 @@ void get_stick_cal(hid_device* jc, u8 is_left) {
   stick_cal[is_left ? 6 : 13] = ((out[4] << 8) & 0xF00 | out[3]); // Deadzone
 }
 
-void setup_joycon(hid_device *jc, u8 leds, u8 is_left) {
+void setup_joycon(hid_device *jc, u8 leds, bool is_left) {
   u8 send_buf = 0x3f;
-  subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
-  get_stick_cal(jc, is_left);
+  u8 left = is_left ? 1 : 0;
+  subcomm(jc, &send_buf, 1, 0x3, 1, left);
+  get_stick_cal(jc, left);
 /*  TODO: improve bluetooth pairing
   send_buf = 0x1;
-  subcomm(jc, &send_buf, 1, 0x1, 1, is_left);
+  subcomm(jc, &send_buf, 1, 0x1, 1, left);
+  subcomm(jc, &send_buf, 1, 0x1, 1, left);
   send_buf = 0x2;
-  subcomm(jc, &send_buf, 1, 0x1, 1, is_left);
+  subcomm(jc, &send_buf, 1, 0x1, 1, left);
   send_buf = 0x3;
-  subcomm(jc, &send_buf, 1, 0x1, 1, is_left);*/
+  subcomm(jc, &send_buf, 1, 0x1, 1, left);*/
   send_buf = leds;
-  subcomm(jc, &send_buf, 1, 0x30, 1, is_left);
+  subcomm(jc, &send_buf, 1, 0x30, 1, left);
   send_buf = 0x30;
-  subcomm(jc, &send_buf, 1, 0x3, 1, is_left);
+  subcomm(jc, &send_buf, 1, 0x3, 1, left);
 }
 
-void initialize_left_joycon() {
+void inc_timming() {
+	timming_byte++;
+}
+
+int set_led_busy(hid_device* handle, const unsigned short product_id) {
+	int res;
+	u8 buf[49];
+	memset(buf, 0, sizeof(buf));
+	auto hdr = (brcm_hdr *)buf;
+	auto pkt = (brcm_cmd_01 *)(hdr + 1);
+	hdr->cmd = 0x01;
+	hdr->timer = timming_byte & 0xF;
+	inc_timming();
+	pkt->subcmd = 0x30;
+	pkt->subcmd_arg.arg1 = 0x81;
+	res = hid_write(handle, buf, sizeof(buf));
+	res = hid_read_timeout(handle, buf, 0, 64);
+
+	//Set breathing HOME Led
+	if (product_id != JOYCON_L) {
+		memset(buf, 0, sizeof(buf));
+		hdr = (brcm_hdr *)buf;
+		pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 0x01;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x38;
+		pkt->subcmd_arg.arg1 = 0x28;
+		pkt->subcmd_arg.arg2 = 0x20;
+		buf[13] = 0xF2;
+		buf[14] = buf[15] = 0xF0;
+		res = hid_write(handle, buf, sizeof(buf));
+		res = hid_read_timeout(handle, buf, 0, 64);
+	}
+
+	return 0;
+}
+
+int silence_input_report(hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+
+	bool loop = true;
+
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x03;
+		pkt->subcmd_arg.arg1 = 0x3f;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x0380) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 4)
+			break;
+	}
+
+	return 0;
+}
+
+std::string get_sn(u32 offset, const u16 read_len, hid_device* handle) {
+	int res;
+	int error_reading = 0;
+	u8 buf[49];
+	std::string sn = "";
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		inc_timming();
+		pkt->subcmd = 0x10;
+		pkt->spi_data.offset = offset;
+		pkt->spi_data.size = read_len;
+		res = hid_write(handle, buf, sizeof(buf));
+
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if ((*(u16*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
+				loop = false;
+				break;
+			}
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+
+		if (!loop) {
+			break;
+		}
+
+		error_reading++;
+		if (error_reading > 20)
+			return "Error!";
+	}
+	
+	if (res >= 0x14 + read_len) {
+		for (int i = 0; i < read_len; i++) {
+			if (buf[0x14 + i] != 0x000) {
+				sn += buf[0x14 + i];
+			}
+			else
+				sn += "";
+		}
+	}
+	else {
+		return "Error!";
+	}
+	return sn;
+}
+
+int get_battery(u8* test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+
+	int error_reading = 0;
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x50;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x50D0) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			break;
+	}
+
+	test_buf[0] = buf[0x2];
+	test_buf[1] = buf[0xF];
+	test_buf[2] = buf[0x10];
+
+	return 0;
+}
+
+std::string get_battery_str(hid_device* handle) {
+	unsigned char batt_info[3];
+	memset(batt_info, 0, sizeof(batt_info));
+
+	get_battery(batt_info, handle);
+
+	int batt_percent = 0;
+	int batt = ((u8)batt_info[0] & 0xF0) >> 4;
+
+	// Calculate aproximate battery percent from regulated voltage
+	u16 batt_volt = (u8)batt_info[1] + ((u8)batt_info[2] << 8);
+	if (batt_volt < 0x560)
+		batt_percent = 1;
+	else if (batt_volt > 0x55F && batt_volt < 0x5A0) {
+		batt_percent = ((batt_volt - 0x60) & 0xFF) / 7.0f + 1;
+	}
+	else if (batt_volt > 0x59F && batt_volt < 0x5E0) {
+		batt_percent = ((batt_volt - 0xA0) & 0xFF) / 2.625f + 11;
+	}
+	else if (batt_volt > 0x5DF && batt_volt < 0x618) {
+		batt_percent = (batt_volt - 0x5E0) / 1.8965f + 36;
+	}
+	else if (batt_volt > 0x617 && batt_volt < 0x658) {
+		batt_percent = ((batt_volt - 0x18) & 0xFF) / 1.8529f + 66;
+	}
+	else if (batt_volt > 0x657)
+		batt_percent = 100;
+
+	char buf[20];
+	sprintf_s(buf, "%.2fV - %d%%", (batt_volt * 2.5) / 1000, batt_percent);
+	return buf;
+}
+
+int get_spi_data(u32 offset, const u16 read_len, u8 *test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x10;
+		pkt->spi_data.offset = offset;
+		pkt->spi_data.size = read_len;
+		res = hid_write(handle, buf, sizeof(buf));
+
+		int retries = 0;
+		bool loop = true;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if ((*(u16*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			return 1;
+	}
+	
+	if (res >= 0x14 + read_len) {
+		for (int i = 0; i < read_len; i++) {
+			test_buf[i] = buf[0x14 + i];
+		}
+	}
+
+	return 0;
+}
+
+unsigned char* get_colors(hid_device* handle) {
+	unsigned char* spiColors = (unsigned char*)malloc(12);
+	memset(spiColors, 0, 12); 
+
+	int res = get_spi_data(0x6050, 12, spiColors, handle);
+
+	return spiColors;
+}
+
+int get_device_info(u8* test_buf, hid_device* handle) {
+	int res;
+	u8 buf[49];
+	int error_reading = 0;
+	bool loop = true;
+	while (1) {
+		memset(buf, 0, sizeof(buf));
+		auto hdr = (brcm_hdr *)buf;
+		auto pkt = (brcm_cmd_01 *)(hdr + 1);
+		hdr->cmd = 1;
+		hdr->timer = timming_byte & 0xF;
+		timming_byte++;
+		pkt->subcmd = 0x02;
+		res = hid_write(handle, buf, sizeof(buf));
+		int retries = 0;
+		while (1) {
+			res = hid_read_timeout(handle, buf, sizeof(buf), 64);
+			if (*(u16*)&buf[0xD] == 0x0282) {
+				loop = false;
+				break;
+			}
+
+			retries++;
+			if (retries > 8 || res == 0)
+				break;
+		}
+		if (!loop) {
+			break;
+		}
+		error_reading++;
+		if (error_reading > 20)
+			break;
+	}
+	for (int i = 0; i < 0xA; i++) {
+		test_buf[i] = buf[0xF + i];
+	}
+
+	return 0;
+}
+
+std::string get_mac(hid_device* handle) {
+	unsigned char device_info[10];
+	memset(device_info, 0, sizeof(device_info));
+
+	get_device_info(device_info, handle);
+
+	char buf[20];
+	//Firmware
+	//sprintf_s(buf, "%02X.%02X",
+	//	device_info[0], device_info[1]);
+
+	sprintf_s(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
+		device_info[4], device_info[5], device_info[6], device_info[7], device_info[8], device_info[9]);
+	return buf;
+}
+
+hid_device* initialize_left_joycon(std::string* mac) {
+  hid_device *left_joycon = NULL;
+  int counter = 1;
+
   struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
-  if(left_joycon_info != NULL) std::cout << " => found left Joy-Con" << std::endl;
-  else {
+  if (mac != NULL) {
+	  do {
+		  hid_device * joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
+
+		  std::string temp_mac = get_mac(joycon);
+		  if (mac->compare(temp_mac) == 0) {
+			  break;
+		  }
+		  left_joycon_info = left_joycon_info->next;
+	  } while (left_joycon_info != NULL);
+  } else {
+    while (left_joycon_info->next != NULL) {
+      counter++;
+      left_joycon_info = left_joycon_info->next;
+    }
+  }
+
+  if(left_joycon_info == NULL) {
     std::cout << " => could not find left Joy-Con" << std::endl;
-    hid_exit();
+	return left_joycon;
+	/*hid_exit();
     vigem_free(client);
     std::cout << "press [ENTER] to exit" << std::endl;
     getchar();
     exit(1);
+	*/
   }
+
+  std::cout << " => found left Joy-Con" << std::endl;
+
   left_joycon = hid_open(NINTENDO, JOYCON_L, left_joycon_info->serial_number);
-  if(left_joycon != NULL) std::cout << " => successfully connected to left Joy-Con" << std::endl;
+  if(left_joycon != NULL)
+    std::cout << " => successfully connected to left Joy-Con" << std::endl;
   else {
     std::cout << " => could not connect to left Joy-Con" << std::endl;
-    hid_exit();
+	return left_joycon;
+    /*hid_exit();
     vigem_free(client);
     std::cout << "press [ENTER] to exit" << std::endl;
     getchar();
     exit(1);
+	*/
   }
 
-  setup_joycon(left_joycon, 0x1, 1);
+  setup_joycon(left_joycon, counter, true);
+  return left_joycon;
 }
 
-void initialize_right_joycon() {
+hid_device* initialize_right_joycon(std::string* mac) {
+  hid_device *right_joycon = NULL;
+
+  int counter = 1;
+
   struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
-  if(right_joycon_info != NULL) std::cout << " => found right Joy-Con" << std::endl;
-  else {
+  if (mac != NULL) {
+	  do {
+		  hid_device * joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
+
+		  std::string temp_mac = get_mac(joycon);
+		  if (mac->compare(temp_mac) == 0) {
+			  break;
+		  }
+		  right_joycon_info = right_joycon_info->next;
+	  } while (right_joycon_info != NULL);
+
+  } else {
+	  while (right_joycon_info->next != NULL) {
+		  counter++;
+		  right_joycon_info = right_joycon_info->next;
+	  }
+  }
+
+  if(right_joycon_info == NULL) {
     std::cout << " => could not find right Joy-Con" << std::endl;
-    hid_exit();
+	return right_joycon;
+    /*hid_exit();
     vigem_free(client);
     std::cout << "press [ENTER] to exit" << std::endl;
     getchar();
-    exit(1);
+    exit(1);*/
   }
+
+  std::cout << " => found right Joy-Con" << std::endl;
   right_joycon = hid_open(NINTENDO, JOYCON_R, right_joycon_info->serial_number);
-  if(right_joycon != NULL) std::cout << " => successfully connected to right Joy-Con" << std::endl;
+  if(right_joycon != NULL)
+    std::cout << " => successfully connected to right Joy-Con" << std::endl;
   else {
     std::cout << " => could not connect to right Joy-Con" << std::endl;
-    hid_exit();
+	return right_joycon;
+	/*hid_exit();
     vigem_free(client);
     std::cout << "press [ENTER] to exit" << std::endl;
     getchar();
     exit(1);
+	*/
   }
-  setup_joycon(right_joycon, 0x1, 0);
+  setup_joycon(right_joycon, counter, false);
 
-
-
+  return right_joycon;
 }
 
-void initialize_xbox() {
+class Xbox {
+public:
+	PVIGEM_CLIENT client;
+	PVIGEM_TARGET target;
+	XUSB_REPORT* report;
+	USHORT left_buttons = 0;
+	USHORT right_buttons = 0;
+};
+
+class Joystick {
+public:
+	std::string* mac;
+	Xbox* xbox;
+	HANDLE report_mutex;
+};
+
+Xbox* initialize_xbox() {
+  Xbox* xbox = new Xbox();
+  xbox->report = new XUSB_REPORT;
+  xbox->client = vigem_alloc();
+  
   std::cout << "initializing emulated Xbox 360 controller..." << std::endl;
-  VIGEM_ERROR err = vigem_connect(client);
+  VIGEM_ERROR err = vigem_connect(xbox->client);
   if(err == VIGEM_ERROR_NONE) {
     std::cout << " => connected successfully" << std::endl;
   } else {
     std::cout << "connection error: " << vigem_error_to_string(err) << std::endl;
-    vigem_free(client);
+    vigem_free(xbox->client);
     std::cout << "press [ENTER] to exit" << std::endl;
     getchar();
     exit(1);
   }
-  target = vigem_target_x360_alloc();
-  vigem_target_add(client, target);
-  XUSB_REPORT_INIT(&report);
+  xbox->target = vigem_target_x360_alloc();
+  vigem_target_add(xbox->client, xbox->target);
+  XUSB_REPORT_INIT(xbox->report);
   std::cout << " => added target Xbox 360 Controller" << std::endl;
   std::cout << std::endl;
+  return xbox;
 }
 
-void disconnect_exit() {
+void disconnect_exit(Xbox xbox) {
   hid_exit();
-  vigem_target_remove(client, target);
-  vigem_target_free(target);
-  vigem_disconnect(client);
-  vigem_free(client);
+  vigem_target_remove(xbox.client, xbox.target);
+  vigem_target_free(xbox.target);
+  vigem_disconnect(xbox.client);
+  vigem_free(xbox.client);
   exit(0);
 }
 
-void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
+void process_stick(XUSB_REPORT* report, bool is_left, uint8_t a, uint8_t b, uint8_t c) {
   u16 raw[] = { (uint16_t)(a | ((b & 0xf) << 8)), \
              (uint16_t)((b >> 4) | (c << 4)) };
   float s[] = { 0, 0 };
@@ -431,34 +913,34 @@ void process_stick(bool is_left, uint8_t a, uint8_t b, uint8_t c) {
     if(s[i] < -1) s[i] = -1;
     s[i] *= (XBOX_ANALOG_MAX);
   }
-
+  
   if(is_left) {
-    report.sThumbLX = (SHORT)s[0];
-    report.sThumbLY = (SHORT)s[1];
+    report->sThumbLX = (SHORT)s[0];
+    report->sThumbLY = (SHORT)s[1];
   }
   else {
-    report.sThumbRX = (SHORT)s[0];
-    report.sThumbRY = (SHORT)s[1];
+    report->sThumbRX = (SHORT)s[0];
+    report->sThumbRY = (SHORT)s[1];
   }
 }
 
-void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
+void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
   if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
-  std::cout << joycon_button_to_string(region, button) << " ";
+	std::cout << joycon_button_to_string(region, button) << std::endl;
   auto got = button_mappings.find(button);
   if(got != button_mappings.end()) {
     XUSB_BUTTON target = got->second;
     switch (region) {
       case LEFT_DPAD:
       case LEFT_AUX:
-        left_buttons = left_buttons | target;
+		  xbox->left_buttons = xbox->left_buttons | target;
         return;
       case LEFT_ANALOG:
       case RIGHT_ANALOG:
         break;
       case RIGHT_BUTTONS:
       case RIGHT_AUX:
-        right_buttons = right_buttons | target;
+		  xbox->right_buttons = xbox->right_buttons | target;
         return;
     }
   }
@@ -466,201 +948,180 @@ void process_button(JOYCON_REGION region, JOYCON_BUTTON button) {
     case LEFT_DPAD:
       switch(button) {
         case L_DPAD_UP:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_UP;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_DPAD_UP;
           break;
         case L_DPAD_DOWN:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_DOWN;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_DPAD_DOWN;
           break;
         case L_DPAD_LEFT:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_LEFT;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_DPAD_LEFT;
           break;
         case L_DPAD_RIGHT:
-          left_buttons = left_buttons | XUSB_GAMEPAD_DPAD_RIGHT;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_DPAD_RIGHT;
           break;
         case L_DPAD_SL:
-          left_buttons = left_buttons | XUSB_GAMEPAD_X;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_X;
           break;
         case L_DPAD_SR:
-          left_buttons = left_buttons | XUSB_GAMEPAD_A;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_A;
           break;
       }
       break;
     case LEFT_ANALOG:
       switch(button) {
         case L_ANALOG_DOWN:
-          report.sThumbLX = 0;
-          report.sThumbLY = XBOX_ANALOG_MIN;
+			xbox->report->sThumbLX = 0;
+			xbox->report->sThumbLY = XBOX_ANALOG_MIN;
           break;
         case L_ANALOG_UP:
-          report.sThumbLX = 0;
-          report.sThumbLY = XBOX_ANALOG_MAX;
+			xbox->report->sThumbLX = 0;
+			xbox->report->sThumbLY = XBOX_ANALOG_MAX;
           break;
         case L_ANALOG_LEFT:
-          report.sThumbLX = XBOX_ANALOG_MIN;
-          report.sThumbLY = 0;
+			xbox->report->sThumbLX = XBOX_ANALOG_MIN;
+			xbox->report->sThumbLY = 0;
           break;
         case L_ANALOG_RIGHT:
-          report.sThumbLX = XBOX_ANALOG_MAX;
-          report.sThumbLY = 0;
+			xbox->report->sThumbLX = XBOX_ANALOG_MAX;
+			xbox->report->sThumbLY = 0;
           break;
         case L_ANALOG_DOWN_LEFT:
-          report.sThumbLX = XBOX_ANALOG_DIAG_MIN;
-          report.sThumbLY = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbLX = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbLY = XBOX_ANALOG_DIAG_MIN;
           break;
         case L_ANALOG_DOWN_RIGHT:
-          report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
-          report.sThumbLY = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbLX = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbLY = XBOX_ANALOG_DIAG_MIN;
           break;
         case L_ANALOG_UP_LEFT:
-          report.sThumbLX = XBOX_ANALOG_DIAG_MIN;
-          report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbLX = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbLY = XBOX_ANALOG_DIAG_MAX;
           break;
         case L_ANALOG_UP_RIGHT:
-          report.sThumbLX = XBOX_ANALOG_DIAG_MAX;
-          report.sThumbLY = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbLX = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbLY = XBOX_ANALOG_DIAG_MAX;
           break;
         case L_ANALOG_NONE:
-          report.sThumbLX = 0;
-          report.sThumbLY = 0;
+			xbox->report->sThumbLX = 0;
+			xbox->report->sThumbLY = 0;
           break;
       }
       break;
     case LEFT_AUX:
       switch(button) {
         case L_SHOULDER:
-          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_SHOULDER;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_LEFT_SHOULDER;
           break;
         case L_TRIGGER:
-          report.bLeftTrigger = 255;
+			xbox->report->bLeftTrigger = 255;
           break;
         case L_CAPTURE:
-          left_buttons = left_buttons | XUSB_GAMEPAD_BACK;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_BACK;
           break;
         case L_MINUS:
-          left_buttons = left_buttons | XUSB_GAMEPAD_BACK;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_BACK;
           break;
         case L_STICK:
-          left_buttons = left_buttons | XUSB_GAMEPAD_LEFT_THUMB;
+			xbox->left_buttons = xbox->left_buttons | XUSB_GAMEPAD_LEFT_THUMB;
           break;
       }
       break;
     case RIGHT_ANALOG:
       switch(button) {
         case R_ANALOG_DOWN:
-          report.sThumbRX = 0;
-          report.sThumbRY = XBOX_ANALOG_MIN;
+			xbox->report->sThumbRX = 0;
+			xbox->report->sThumbRY = XBOX_ANALOG_MIN;
           break;
         case R_ANALOG_UP:
-          report.sThumbRX = 0;
-          report.sThumbRY = XBOX_ANALOG_MAX;
+			xbox->report->sThumbRX = 0;
+			xbox->report->sThumbRY = XBOX_ANALOG_MAX;
           break;
         case R_ANALOG_LEFT:
-          report.sThumbRX = XBOX_ANALOG_MIN;
-          report.sThumbRY = 0;
+			xbox->report->sThumbRX = XBOX_ANALOG_MIN;
+			xbox->report->sThumbRY = 0;
           break;
         case R_ANALOG_RIGHT:
-          report.sThumbRX = XBOX_ANALOG_MAX;
-          report.sThumbRY = 0;
+			xbox->report->sThumbRX = XBOX_ANALOG_MAX;
+			xbox->report->sThumbRY = 0;
           break;
         case R_ANALOG_DOWN_LEFT:
-          report.sThumbRX = XBOX_ANALOG_DIAG_MIN;
-          report.sThumbRY = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbRX = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbRY = XBOX_ANALOG_DIAG_MIN;
           break;
         case R_ANALOG_DOWN_RIGHT:
-          report.sThumbRX = XBOX_ANALOG_DIAG_MAX;
-          report.sThumbRY = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbRX = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbRY = XBOX_ANALOG_DIAG_MIN;
           break;
         case R_ANALOG_UP_LEFT:
-          report.sThumbRX = XBOX_ANALOG_DIAG_MIN;
-          report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbRX = XBOX_ANALOG_DIAG_MIN;
+			xbox->report->sThumbRY = XBOX_ANALOG_DIAG_MAX;
           break;
         case R_ANALOG_UP_RIGHT:
-          report.sThumbRX = XBOX_ANALOG_DIAG_MAX;
-          report.sThumbRY = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbRX = XBOX_ANALOG_DIAG_MAX;
+			xbox->report->sThumbRY = XBOX_ANALOG_DIAG_MAX;
           break;
         case R_ANALOG_NONE:
-          report.sThumbRX = 0;
-          report.sThumbRY = 0;
+			xbox->report->sThumbRX = 0;
+			xbox->report->sThumbRY = 0;
           break;
       }
       break;
     case RIGHT_AUX:
       switch(button) {
       case R_SHOULDER:
-        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_SHOULDER;
+		  xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_RIGHT_SHOULDER;
         break;
       case R_TRIGGER:
-        report.bRightTrigger = 255;
+		  xbox->report->bRightTrigger = 255;
         break;
       case R_HOME:
-        right_buttons = right_buttons | XUSB_GAMEPAD_START;
+		  xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_START;
         break;
       case R_PLUS:
-        right_buttons = right_buttons | XUSB_GAMEPAD_START;
+		  xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_START;
         break;
       case R_STICK:
-        right_buttons = right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
+		  xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_RIGHT_THUMB;
         break;
       }
       break;
     case RIGHT_BUTTONS:
       switch(button) {
         case R_BUT_A:
-          right_buttons = right_buttons | XUSB_GAMEPAD_B;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_B;
           break;
         case R_BUT_B:
-          right_buttons = right_buttons | XUSB_GAMEPAD_A;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_A;
           break;
         case R_BUT_X:
-          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_Y;
           break;
         case R_BUT_Y:
-          right_buttons = right_buttons | XUSB_GAMEPAD_X;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_X;
           break;
         case R_BUT_SL:
-          right_buttons = right_buttons | XUSB_GAMEPAD_B;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_B;
           break;
         case R_BUT_SR:
-          right_buttons = right_buttons | XUSB_GAMEPAD_Y;
+			xbox->right_buttons = xbox->right_buttons | XUSB_GAMEPAD_Y;
           break;
       }
       break;
   }
 }
 
-void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a) {
-  process_button(region, a);
-}
-
-void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b) {
-  process_button(region, a);
-  process_button(region, b);
-}
-
-void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b, JOYCON_BUTTON c) {
-  process_button(region, a);
-  process_button(region, b);
-  process_button(region, c);
-}
-
-void process_buttons(JOYCON_REGION region, JOYCON_BUTTON a, JOYCON_BUTTON b, JOYCON_BUTTON c, JOYCON_BUTTON d) {
-  process_button(region, a);
-  process_button(region, b);
-  process_button(region, c);
-  process_button(region, d);
-}
-
 inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
   return !!(data & button);
 }
 
-inline void region_part(unsigned char data, JOYCON_REGION region, JOYCON_BUTTON button) {
-  if(has_button(data, button)) process_buttons(region, button);
+inline void region_part(Xbox* xbox, unsigned char data, JOYCON_REGION region, JOYCON_BUTTON button) {
+  if(has_button(data, button))
+    process_button(xbox, region, button);
 }
 
-void process_left_joycon() {
-  report.bLeftTrigger = 0;
-  left_buttons = 0;
+void process_left_joycon(Xbox* xbox) {
+  xbox->report->bLeftTrigger = 0;
+  xbox->left_buttons = 0;
   u8 offset = 0;
   u8 shift = 0;
   u8 offset2 = 0;
@@ -670,28 +1131,28 @@ void process_left_joycon() {
     offset = 2;
     offset2 = 3;
     shift = 1;
-    process_stick(true, data[6], data[7], data[8]);
+    process_stick(xbox->report, true, data[6], data[7], data[8]);
   }
   else {
-    process_buttons(LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
+    process_button(xbox, LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
   }
-  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_UP);
-  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_DOWN);
-  region_part(data[1 + offset*2]>>(shift*3), LEFT_DPAD, L_DPAD_LEFT);
-  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_RIGHT);
-  region_part(data[1 + offset*2]>>shift, LEFT_DPAD, L_DPAD_SL);
-  region_part(data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_SR);
-  region_part(data[2 + offset2], LEFT_AUX, L_TRIGGER);
-  region_part(data[2 + offset2], LEFT_AUX, L_SHOULDER);
-  region_part(data[2 + offset], LEFT_AUX, L_CAPTURE);
-  region_part(data[2 + offset], LEFT_AUX, L_MINUS);
-  region_part(data[2 + offset]>>shift, LEFT_AUX, L_STICK);
-  report.wButtons = right_buttons | left_buttons;
+  region_part(xbox, data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_UP);
+  region_part(xbox, data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_DOWN);
+  region_part(xbox, data[1 + offset*2]>>(shift*3), LEFT_DPAD, L_DPAD_LEFT);
+  region_part(xbox, data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_RIGHT);
+  region_part(xbox, data[1 + offset*2]>>shift, LEFT_DPAD, L_DPAD_SL);
+  region_part(xbox, data[1 + offset*2]<<shift, LEFT_DPAD, L_DPAD_SR);
+  region_part(xbox, data[2 + offset2], LEFT_AUX, L_TRIGGER);
+  region_part(xbox, data[2 + offset2], LEFT_AUX, L_SHOULDER);
+  region_part(xbox, data[2 + offset], LEFT_AUX, L_CAPTURE);
+  region_part(xbox, data[2 + offset], LEFT_AUX, L_MINUS);
+  region_part(xbox, data[2 + offset]>>shift, LEFT_AUX, L_STICK);
+  xbox->report->wButtons = xbox->right_buttons | xbox->left_buttons;
 }
 
-void process_right_joycon() {
-  report.bRightTrigger = 0;
-  right_buttons = 0;
+void process_right_joycon(Xbox* xbox) {
+  xbox->report->bRightTrigger = 0;
+  xbox->right_buttons = 0;
   u8 offset = 0;
   u8 shift = 0;
   u8 offset2 = 0;
@@ -701,20 +1162,20 @@ void process_right_joycon() {
     offset = 2;
     offset2 = 1;
     shift = 1;
-    process_stick(false, data[9], data[10], data[11]);
-  } else process_buttons(RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
-  region_part(data[1 + offset]>>(shift*3), RIGHT_BUTTONS, R_BUT_A);
-  region_part(data[1 + offset], RIGHT_BUTTONS, R_BUT_B);
-  region_part(data[1 + offset], RIGHT_BUTTONS, R_BUT_X);
-  region_part(data[1 + offset]<<(shift*3), RIGHT_BUTTONS, R_BUT_Y);
-  region_part(data[1 + offset]>>shift, RIGHT_BUTTONS, R_BUT_SL);
-  region_part(data[1 + offset]<<shift, RIGHT_BUTTONS, R_BUT_SR);
-  region_part(data[2 + offset2], RIGHT_AUX, R_TRIGGER);
-  region_part(data[2 + offset2], RIGHT_AUX, R_SHOULDER);
-  region_part(data[2 + offset], RIGHT_AUX, R_HOME);
-  region_part(data[2 + offset], RIGHT_AUX, R_PLUS);
-  region_part(data[2 + offset]<<shift, RIGHT_AUX, R_STICK);
-  report.wButtons = left_buttons | right_buttons;
+    process_stick(xbox->report, false, data[9], data[10], data[11]);
+  } else process_button(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(xbox, data[1 + offset]>>(shift*3), RIGHT_BUTTONS, R_BUT_A);
+  region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_B);
+  region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_X);
+  region_part(xbox, data[1 + offset]<<(shift*3), RIGHT_BUTTONS, R_BUT_Y);
+  region_part(xbox, data[1 + offset]>>shift, RIGHT_BUTTONS, R_BUT_SL);
+  region_part(xbox, data[1 + offset]<<shift, RIGHT_BUTTONS, R_BUT_SR);
+  region_part(xbox, data[2 + offset2], RIGHT_AUX, R_TRIGGER);
+  region_part(xbox, data[2 + offset2], RIGHT_AUX, R_SHOULDER);
+  region_part(xbox, data[2 + offset], RIGHT_AUX, R_HOME);
+  region_part(xbox, data[2 + offset], RIGHT_AUX, R_PLUS);
+  region_part(xbox, data[2 + offset]<<shift, RIGHT_AUX, R_STICK);
+  xbox->report->wButtons = xbox->left_buttons | xbox->right_buttons;
 }
 
 void joycon_cleanup(hid_device *jc, u8 is_left) {
@@ -723,46 +1184,48 @@ void joycon_cleanup(hid_device *jc, u8 is_left) {
 }
 
 DWORD WINAPI left_joycon_thread(__in LPVOID lpParameter) {
-  WaitForSingleObject(report_mutex, INFINITE);
+  Joystick* joystick = (Joystick*)lpParameter;
+  WaitForSingleObject(joystick->report_mutex, INFINITE);
   std::cout << " => left Joy-Con thread started" << std::endl;
-  initialize_left_joycon();
-  ReleaseMutex(report_mutex);
+  hid_device* left_joycon = initialize_left_joycon(joystick->mac);
+  ReleaseMutex(joystick->report_mutex);
   for(;;) {
     if(kill_threads) break;
     hid_read(left_joycon, data, DATA_BUFFER_SIZE);
-    WaitForSingleObject(report_mutex, INFINITE);
-    process_left_joycon();
-    vigem_target_x360_update(client, target, report);
-    ReleaseMutex(report_mutex);
+    WaitForSingleObject(joystick->report_mutex, INFINITE);
+    process_left_joycon(joystick->xbox);
+	vigem_target_x360_update(joystick->xbox->client, joystick->xbox->target, *(joystick->xbox->report));
+    ReleaseMutex(joystick->report_mutex);
   }
   joycon_cleanup(left_joycon, 1);
   return 0;
 }
 
 DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
-  WaitForSingleObject(report_mutex, INFINITE);
+  Joystick* joystick = (Joystick*)lpParameter;
+  WaitForSingleObject(joystick->report_mutex, INFINITE);
   std::cout << " => right Joy-Con thread started" << std::endl;
-  initialize_right_joycon();
-  ReleaseMutex(report_mutex);
+  hid_device* right_joycon = initialize_right_joycon(joystick->mac);
+  ReleaseMutex(joystick->report_mutex);
   for(;;) {
     if(kill_threads) break;
     hid_read(right_joycon, data, DATA_BUFFER_SIZE);
-    WaitForSingleObject(report_mutex, INFINITE);
-    process_right_joycon();
-    vigem_target_x360_update(client, target, report);
-    ReleaseMutex(report_mutex);
+    WaitForSingleObject(joystick->report_mutex, INFINITE);
+    process_right_joycon(joystick->xbox);
+	vigem_target_x360_update(joystick->xbox->client, joystick->xbox->target, *(joystick->xbox->report));
+    ReleaseMutex(joystick->report_mutex);
   }
   joycon_cleanup(right_joycon, 0);
   return 0;
 }
 
-void terminate() {
+void terminate(Xbox xbox, HANDLE left_thread, HANDLE right_thread) {
   kill_threads = true;
   Sleep(10);
   TerminateThread(left_thread, 0);
   TerminateThread(right_thread, 0);
   std::cout << "disconnecting and exiting..." << std::endl;
-  disconnect_exit();
+  disconnect_exit(xbox);
 }
 
 void exit_handler(int signum) {
@@ -770,26 +1233,272 @@ void exit_handler(int signum) {
   exit(signum);
 }
 
-int main() {
-  signal(SIGINT, exit_handler);
-  std::cout << "XJoy v0.2.0" << std::endl << std::endl;
+std::string get_body_color(unsigned char* spiColors) {
+	char color[10];
+	sprintf_s(color, "#%02X%02X%02X", (u8)spiColors[0], (u8)spiColors[1], (u8)spiColors[2]);
+	std::string col = color;
+	if (ANIMAL_CROSSING_BLUE.compare(color) == 0) {
+		col = "Animal crossing Blue";
+	}
+	else if (ANIMAL_CROSSING_GREEN.compare(color) == 0) {
+		col = "Animal crossing Green";
+	}
+	else if (NEON_BLUE.compare(color) == 0) {
+		col = "Neon Blue";
+	}
+	else if (NEON_RED.compare(color) == 0) {
+		col = "Neon Red";
+	}
+	else if (HORI_RED.compare(color) == 0) {
+		col = "HORI Red";
+	}
+	else if (GRAY.compare(color) == 0) {
+		col = "Gray";
+	}
+	else if (NEON_YELLOW.compare(color) == 0) {
+		col = "Neon Yellow";
+	}
+	else if (NEON_GREEN.compare(color) == 0) {
+		col = "Neon Green";
+	}
+	else if (NEON_PINK.compare(color) == 0) {
+		col = "Neon Pink";
+	}
+	else if (BLUE.compare(color) == 0) {
+		col = "Blue";
+	} else if (NEON_PURPLE.compare(color) == 0) {
+		col = "Neon Purple";
+	}
+	else if (NEON_ORANGE.compare(color) == 0) {
+		col = "Neon Orange";
+	}
 
-  initialize_xbox();
+	return col;
+}
+
+void show_hidinfo(std::string prefix, const unsigned short product_id, wchar_t* hidserial) {
+	hid_device * joycon = hid_open(NINTENDO, product_id, hidserial);
+	if (joycon != NULL) {
+		unsigned char* spiColors = get_colors(joycon);
+		std::cout << "- "<< prefix << ", " << get_sn(0x6001, 0xF, joycon) << ", " << get_mac(joycon) << ", " << get_body_color(spiColors) << ", " << get_battery_str(joycon) << std::endl;
+	}
+}
+
+void show_list(std::string name) {
+	std::cout << "Available devices:" << std::endl;
+
+	int left_counter = 0;
+	struct hid_device_info *left_joycon_info = hid_enumerate(NINTENDO, JOYCON_L);
+	do {
+		if (left_joycon_info == NULL)
+			break;
+
+		show_hidinfo("Left Joycon ", JOYCON_L, left_joycon_info->serial_number);
+		
+		left_counter++;
+		left_joycon_info = left_joycon_info->next;
+	} while (left_joycon_info != NULL);
+
+	int right_counter = 0;
+	struct hid_device_info *right_joycon_info = hid_enumerate(NINTENDO, JOYCON_R);
+	do {
+		if (right_joycon_info == NULL)
+			break;
+		show_hidinfo("Right Joycon", JOYCON_R, right_joycon_info->serial_number);
+
+		right_counter++;
+		right_joycon_info = right_joycon_info->next;
+	} while (right_joycon_info != NULL);
+
+	if (left_counter == 0 && right_counter == 0)
+		std::cout << "  No joycons available, sync with OS first" << std::endl;
+
+}
+
+void show_usage(std::string name) {
+	            //         1         2         3         4         5         6         7         8
+	            //12345678901234567890123456789012345678901234567890123456789012345678901234567890
+	std::cout << "Configure joy cons" << std::endl << std::endl;
+	std::cout << "XJoy [/?] [/L] [/V] [/P[[:]Args]]" << std::endl << std::endl;
+	std::cout << "Options:" << std::endl;
+	std::cout << "/L	List existing joy cons" << std::endl;
+	std::cout << "/V	Show XJoy version" << std::endl;
+	std::cout << "/P	Pair by MAC" << std::endl;
+	std::cout << "Args	Pair formed by -, Pairs separated by ," << std::endl;
+	std::cout << "  	11:22:33:44:55:66-11:22:33:44:55:66,11:22:33:44:55:66-11:22:33:44:55:66" << std::endl;
+	std::cout << "/?	Show this help" << std::endl << std::endl;
+}
+
+void show_version() {
+	std::cout << "XJoy v0.2.0" << std::endl << std::endl;
+}
+
+bool isValidMac(std::string* mac) {
+	return std::regex_match(*mac, std::regex("[a-fA-F0-9][a-fA-F0-9]:[a-fA-F0-9][a-fA-F0-9]:[a-fA-F0-9][a-fA-F0-9]:[a-fA-F0-9][a-fA-F0-9]:[a-fA-F0-9][a-fA-F0-9]:[a-fA-F0-9][a-fA-F0-9]"));
+}
+
+bool checkJoyconTypeByMac(std::string* mac, unsigned short type) {
+	struct hid_device_info *joycon_info = hid_enumerate(NINTENDO, type);
+	do {
+		if (joycon_info == NULL)
+			break;
+		hid_device * joycon = hid_open(NINTENDO, type, joycon_info->serial_number);
+
+		std::string temp_mac = get_mac(joycon);
+		if (mac->compare(temp_mac) == 0) {
+			return true;
+		}
+		joycon_info = joycon_info->next;
+	} while (joycon_info != NULL);
+	return false;
+}
+
+
+int pairing(std::string* l_mac, std::string* r_mac) {
+	DWORD left_thread_id;
+	DWORD right_thread_id;
+	HANDLE left_thread;
+	HANDLE right_thread;
+
+	Xbox* xbox = initialize_xbox();
+
+	Joystick* l_joystick = new Joystick();
+	l_joystick->mac = l_mac;
+	l_joystick->xbox = xbox;
+
+	Joystick* r_joystick = new Joystick();
+	r_joystick->mac = r_mac;
+	r_joystick->xbox = xbox;
+
+	std::cout << std::endl;
+	std::cout << "initializing threads..." << std::endl;
+	HANDLE report_mutex = CreateMutex(NULL, FALSE, NULL);
+	if (report_mutex == NULL) {
+		printf("CreateMutex error: %d\n", GetLastError());
+		return 1;
+	}
+
+	l_joystick->report_mutex = report_mutex;
+	r_joystick->report_mutex = report_mutex;
+
+	std::cout << " => created report mutex" << std::endl;
+	left_thread = CreateThread(0, 0, left_joycon_thread, l_joystick, 0, &left_thread_id);
+	right_thread = CreateThread(0, 0, right_joycon_thread, r_joystick, 0, &right_thread_id);
+	Sleep(500);
+	std::cout << std::endl;
+	//getchar();
+	//terminate(xbox, left_thread, right_thread);
+	return 0;
+}
+
+int pairMacs(std::string* l_mac, std::string* r_mac) {
+	if (!isValidMac(l_mac)) {
+		std::cout << "Invalid mac" << *l_mac << std::endl << std::endl;
+		return 1;
+	}
+	else if (!isValidMac(r_mac)) {
+		std::cout << "Invalid mac" << *r_mac << std::endl << std::endl;
+		return 1;
+	}
+	else if (!checkJoyconTypeByMac(l_mac, JOYCON_L)) {
+		std::cout << "Left joy con not found with mac" << *l_mac << std::endl << std::endl;
+		return 1;
+	}
+	else if (!checkJoyconTypeByMac(r_mac, JOYCON_R)) {
+		std::cout << "Right joy con not found with mac" << *r_mac << std::endl << std::endl;
+		return 1;
+	}
+	else {
+		pairing(l_mac, r_mac);
+	}
+	return 0;
+}
+
+int pairTuple(std::string pair) {
+	std::cout << "Pair tuple: " << pair << std::endl;
+	if (pair.empty()) {
+		std::cout << "Add pair arguments" << std::endl;
+		return 1;
+	}
+	else if (pair.find("-")) {
+		std::istringstream f(pair);
+		std::string s;
+		std::vector<std::string> strings;
+		while (getline(f, s, '-')) {
+			strings.push_back(s);
+		}
+		if (strings.size() != 2) {
+			std::cout << "Wrong number of macs:" << pair << std::endl;
+			return 1;
+		}
+		return pairMacs(&strings[0], &strings[1]);
+	}
+	else {
+		std::cout << "Unknow pair tuple args:" << pair << std::endl;
+		return 1;
+	}
+
+	return 0;
+}
+
+int pair_joycons(std::string pairList) {
+	std::cout << "Pair list args:" << pairList << std::endl;
+	if (pairList.empty()) {
+		std::cout << "Add pair arguments" << std::endl;
+		return 1;
+	}
+	else if (pairList.find(",")) {
+		std::istringstream f(pairList);
+		std::string s;
+		while (getline(f, s, ',')) {
+			int result = pairTuple(s);
+			if (result != 0) {
+				std::cout << "Error pairing tuple" << s << std::endl;
+				return result;
+			}
+		}
+	}
+	else {
+		return pairTuple(pairList);
+	}
+	return 0;
+}
+
+int main(int argc, char *argv[]) {
+  signal(SIGINT, exit_handler);
+
   hid_init();
 
-  std::cout << std::endl;
-  std::cout << "initializing threads..." << std::endl;
-  report_mutex = CreateMutex(NULL, FALSE, NULL);
-  if(report_mutex == NULL) {
-    printf("CreateMutex error: %d\n", GetLastError());
-    return 1;
+  std::string name = argv[0];
+  for (int i = 1; i < argc; ++i) {
+	  std::string arg = argv[i];
+	  if (arg == "/?") {
+		  show_usage(name);
+		  return 0;
+	  }
+	  else if (arg == "/V") {
+		  show_version();
+		  return 0;
+	  }
+	  else if (arg == "/L") {
+		  show_list(name);
+		  return 0;
+	  }
+	  else if (arg.rfind("/P", 0) == 0) {
+		  std::string pairargs = arg.substr(2);
+		  pair_joycons(pairargs);
+		  std::cout << "press [ENTER] to exit" << std::endl;
+          getchar();
+		  //terminate(xbox, left_thread, right_thread);
+		  return 0;
+	  }
+	  else {
+		  std::cout << "Unknow option" << arg << std::endl;
+		  return 1;
+	  }
   }
-  std::cout << " => created report mutex" << std::endl;
-  left_thread = CreateThread(0, 0, left_joycon_thread, 0, 0, &left_thread_id);
-  right_thread = CreateThread(0, 0, right_joycon_thread, 0, 0, &right_thread_id);
-  Sleep(500);
-  std::cout << std::endl;
-  getchar();
-  terminate();
+
+  //Without option, pairs the last connected joycons
+  return pairing(NULL, NULL);
 }
 

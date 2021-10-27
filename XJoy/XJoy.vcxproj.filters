@@ -17,16 +17,25 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="..\Include\hidapi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource1.h">
+    <ClInclude Include="..\Include\hidapi_log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource2.h">
+    <ClInclude Include="..\Include\ViGEmBusDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Yaml.hpp">
+    <ClInclude Include="..\Include\ViGEmBusShared.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\ViGEmClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\ViGEmCommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\ViGEmUtil.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -37,7 +46,7 @@
     <ClCompile Include="XJoy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Yaml.cpp">
+    <ClCompile Include="hid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
