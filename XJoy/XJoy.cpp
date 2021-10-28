@@ -1498,7 +1498,8 @@ int main(int argc, char* argv[]) {
       return 0;
     }
     else {
-      std::cout << "Unknow option" << arg << std::endl;
+      std::cout << "Unknow option '" << arg << "'" << std::endl;
+      std::cout << "For help information. Use '/?' option" << std::endl;
       return 1;
     }
   }
