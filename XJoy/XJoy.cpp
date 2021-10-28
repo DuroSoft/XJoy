@@ -890,12 +890,12 @@ Xbox* initialize_xbox() {
   return xbox;
 }
 
-void disconnect_exit(Xbox xbox) {
+void disconnect_exit(Xbox* xbox) {
   hid_exit();
-  vigem_target_remove(xbox.client, xbox.target);
-  vigem_target_free(xbox.target);
-  vigem_disconnect(xbox.client);
-  vigem_free(xbox.client);
+  vigem_target_remove(xbox->client, xbox->target);
+  vigem_target_free(xbox->target);
+  vigem_disconnect(xbox->client);
+  vigem_free(xbox->client);
   exit(0);
 }
 
@@ -1219,7 +1219,7 @@ DWORD WINAPI right_joycon_thread(__in LPVOID lpParameter) {
   return 0;
 }
 
-void terminate(Xbox xbox, HANDLE left_thread, HANDLE right_thread) {
+void terminate(Xbox* xbox, HANDLE left_thread, HANDLE right_thread) {
   kill_threads = true;
   Sleep(10);
   TerminateThread(left_thread, 0);
@@ -1386,8 +1386,8 @@ int pairing(std::string* l_mac, std::string* r_mac) {
 	right_thread = CreateThread(0, 0, right_joycon_thread, r_joystick, 0, &right_thread_id);
 	Sleep(500);
 	std::cout << std::endl;
-	//getchar();
-	//terminate(xbox, left_thread, right_thread);
+	getchar();
+	terminate(xbox, left_thread, right_thread);
 	return 0;
 }
 
