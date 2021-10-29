@@ -81,6 +81,10 @@ versions. The default mappings are shown below:
 | Capture            | Back           |
 | Plus               | Start          |
 | Minus              | Back           |
+| SL on Joy-Con (L)  | A              |
+| SR on Joy-Con (L)  | X              |
+| SL on Joy-Con (R)  | B              |
+| SR on Joy-Con (R)  | Y              |
 
 ## Building
 
