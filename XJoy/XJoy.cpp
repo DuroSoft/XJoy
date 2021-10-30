@@ -8,6 +8,7 @@
 #include <csignal>
 #include <tuple>
 #include <unordered_map>
+#include "Yaml.hpp"
 #include "hidapi_log.h"
 #include <vector>
 #include <regex>
