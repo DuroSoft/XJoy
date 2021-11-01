@@ -1114,6 +1114,9 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 }
 
 void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
+	if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
+		return;
+
 	std::string jc_key_name = joycon_button_to_string(region, button);
 	std::string xbox_key_name = keymap_config[jc_key_name].As<std::string>("");
 
@@ -1123,8 +1126,7 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 		return;
 	}
 
-	if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
-		std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
+	std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
 
 	if (xbox_key_name == "DISABLE") {
 		return;
