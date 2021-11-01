@@ -45,6 +45,8 @@ const int XBOX_ANALOG_MAX = 32767;
 const int XBOX_ANALOG_DIAG_MAX = round(XBOX_ANALOG_MAX * 0.5 * sqrt(2.0));
 const int XBOX_ANALOG_DIAG_MIN = round(XBOX_ANALOG_MIN * 0.5 * sqrt(2.0));
 
+Yaml::Node keymap_config;
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -1111,6 +1113,38 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
   }
 }
 
+void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
+	std::string jc_key_name = joycon_button_to_string(region, button);
+	std::string xbox_key_name = keymap_config[jc_key_name].As<std::string>();
+
+	try
+	{
+		XUSB_BUTTON xbox_key = string_to_xbox_button(xbox_key_name);
+		char first_letter = jc_key_name[0];
+
+		if (first_letter == 'L') {
+			xbox->left_buttons = xbox->left_buttons | xbox_key;
+		}
+		else if (first_letter == 'R') {
+			xbox->right_buttons = xbox->right_buttons | xbox_key;
+		}
+	}
+	catch (const std::exception& ex)
+	{
+		std::string err = ex.what();
+		std::string key_words = "invalid xbox button: ";
+
+		if (err == key_words + "DISABLE")
+			return;
+		else if (err == key_words + "XUSB_GAMEPAD_LEFT_TRIGGER")
+			xbox->report->bLeftTrigger = 255;
+		else if (err == key_words + "XUSB_GAMEPAD_RIGHT_TRIGGER")
+			xbox->report->bRightTrigger = 255;
+		else
+			std::cout << "error: " << err << std::endl;
+	}
+}
+
 inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
   return !!(data & button);
 }
@@ -1489,7 +1523,7 @@ int main(int argc, char *argv[]) {
 		  std::string pairargs = arg.substr(2);
 		  pair_joycons(pairargs);
 		  std::cout << "press [ENTER] to exit" << std::endl;
-          getchar();
+      getchar();
 		  //terminate(xbox, left_thread, right_thread);
 		  return 0;
 	  }
