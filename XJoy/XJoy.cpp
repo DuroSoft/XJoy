@@ -1117,6 +1117,18 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 	std::string jc_key_name = joycon_button_to_string(region, button);
 	std::string xbox_key_name = keymap_config[jc_key_name].As<std::string>();
 
+	if (xbox_key_name == "DISABLE") {
+		return;
+	}
+	if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
+		xbox->report->bLeftTrigger = 255;
+		return;
+	}
+	if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
+		xbox->report->bRightTrigger = 255;
+		return;
+	}
+
 	try
 	{
 		XUSB_BUTTON xbox_key = string_to_xbox_button(xbox_key_name);
@@ -1131,17 +1143,7 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 	}
 	catch (const std::exception& ex)
 	{
-		std::string err = ex.what();
-		std::string key_words = "invalid xbox button: ";
-
-		if (err == key_words + "DISABLE")
-			return;
-		else if (err == key_words + "XUSB_GAMEPAD_LEFT_TRIGGER")
-			xbox->report->bLeftTrigger = 255;
-		else if (err == key_words + "XUSB_GAMEPAD_RIGHT_TRIGGER")
-			xbox->report->bRightTrigger = 255;
-		else
-			std::cout << "error: " << err << std::endl;
+		std::cout << "error: " << ex.what() << std::endl;
 	}
 }
 
