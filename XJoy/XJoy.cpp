@@ -1115,8 +1115,13 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 
 void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 	std::string jc_key_name = joycon_button_to_string(region, button);
-	std::string xbox_key_name = keymap_config[jc_key_name].As<std::string>();
+	std::string xbox_key_name = keymap_config[jc_key_name].As<std::string>("");
 
+	if (xbox_key_name == "")
+	{
+		std::cout << "Not found key: " << jc_key_name << std::endl;
+		return;
+	}
 	if (xbox_key_name == "DISABLE") {
 		return;
 	}
