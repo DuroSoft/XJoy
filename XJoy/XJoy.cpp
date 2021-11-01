@@ -1122,6 +1122,10 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 		std::cout << "Not found key: " << jc_key_name << std::endl;
 		return;
 	}
+
+	if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
+		std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
+
 	if (xbox_key_name == "DISABLE") {
 		return;
 	}
