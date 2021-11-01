@@ -62,4 +62,7 @@
   <ItemGroup>
     <Image Include="XJoy.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="keymap.yaml" />
+  </ItemGroup>
 </Project>
