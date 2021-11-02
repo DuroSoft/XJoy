@@ -1512,11 +1512,24 @@ int pair_joycons(std::string pairList) {
 	return 0;
 }
 
+void load_keymap_file() {
+	try
+	{
+		Yaml::Parse(keymap_config, "keymap.yaml");
+	}
+	catch (const std::exception& ex)
+	{
+		std::cout << "Cannot load file 'keymap.yaml'" << std::endl;
+		std::cout << "Error massage: " << ex.what() << std::endl;
+	}
+}
+
 int main(int argc, char *argv[]) {
   signal(SIGINT, exit_handler);
-
+  
   hid_init();
-
+	load_keymap_file();
+  
   std::string name = argv[0];
   for (int i = 1; i < argc; ++i) {
 	  std::string arg = argv[i];
