@@ -72,6 +72,6 @@
     <Image Include="XJoy.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="keymap.yaml" />
+    <Text Include="keymap.yaml" />
   </ItemGroup>
 </Project>

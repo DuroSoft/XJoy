@@ -121,10 +121,10 @@
     <Image Include="XJoy.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="keymap.yaml">
+    <Text Include="keymap.yaml">
       <FileType>Text</FileType>
       <DeploymentContent>true</DeploymentContent>
-    </None>
+    </Text>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
