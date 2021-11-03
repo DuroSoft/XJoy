@@ -928,11 +928,11 @@ void process_stick(XUSB_REPORT* report, bool is_left, uint8_t a, uint8_t b, uint
 }
 
 std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
-	int r = region;
-	int b = button;
+  int r = region;
+  int b = button;
 
-	std::string pos = std::to_string(r) + "." + std::to_string(b);
-	return pos;
+  std::string pos = std::to_string(r) + "." + std::to_string(b);
+  return pos;
 }
 
 void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
@@ -1122,36 +1122,36 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 }
 
 void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
-	if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
-		return;
+  if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
+    return;
 
-	std::string jcbtn_pos = get_jcbtn_pos(region, button);
-	std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
-	std::string xbox_key_name = btnkey_mappings[jc_key_name];
+  std::string jcbtn_pos = get_jcbtn_pos(region, button);
+  std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
+  std::string xbox_key_name = btnkey_mappings[jc_key_name];
 
-	std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
+  std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
 
-	if (xbox_key_name == "DISABLE") {
-		return;
-	}
-	if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
-		xbox->report->bLeftTrigger = 255;
-		return;
-	}
-	if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
-		xbox->report->bRightTrigger = 255;
-		return;
-	}
+  if (xbox_key_name == "DISABLE") {
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
+    xbox->report->bLeftTrigger = 255;
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
+    xbox->report->bRightTrigger = 255;
+    return;
+  }
 
-	XUSB_BUTTON xbox_key = button_mappings[jcbtn_pos];
-	char first_letter = jc_key_name[0];
+  XUSB_BUTTON xbox_key = button_mappings[jcbtn_pos];
+  char first_letter = jc_key_name[0];
 
-	if (first_letter == 'L') {
-		xbox->left_buttons = xbox->left_buttons | xbox_key;
-	}
-	else if (first_letter == 'R') {
-		xbox->right_buttons = xbox->right_buttons | xbox_key;
-	}
+  if (first_letter == 'L') {
+    xbox->left_buttons = xbox->left_buttons | xbox_key;
+  }
+  else if (first_letter == 'R') {
+    xbox->right_buttons = xbox->right_buttons | xbox_key;
+  }
 }
 
 inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
@@ -1510,61 +1510,61 @@ int pair_joycons(std::string pairList) {
 
 void load_keymap_file() {
 
-	Yaml::Node keymap_config;
+  Yaml::Node keymap_config;
 
-	Yaml::Parse(keymap_config, "keymap.yaml");
-	std::string jckeys[22] = {
-		"L_DPAD_LEFT",
-		"L_DPAD_DOWN",
-		"L_DPAD_UP",
-		"L_DPAD_RIGHT",
-		"L_DPAD_SL",
-		"L_DPAD_SR",
-		"L_SHOULDER",
-		"L_TRIGGER",
-		"L_CAPTURE",
-		"L_MINUS",
-		"L_STICK",
-		"R_BUT_A",
-		"R_BUT_B",
-		"R_BUT_X",
-		"R_BUT_Y",
-		"R_BUT_SL",
-		"R_BUT_SR",
-		"R_SHOULDER",
-		"R_TRIGGER",
-		"R_HOME",
-		"R_PLUS",
-		"R_STICK"
-	};
+  Yaml::Parse(keymap_config, "keymap.yaml");
+  std::string jckeys[22] = {
+    "L_DPAD_LEFT",
+    "L_DPAD_DOWN",
+    "L_DPAD_UP",
+    "L_DPAD_RIGHT",
+    "L_DPAD_SL",
+    "L_DPAD_SR",
+    "L_SHOULDER",
+    "L_TRIGGER",
+    "L_CAPTURE",
+    "L_MINUS",
+    "L_STICK",
+    "R_BUT_A",
+    "R_BUT_B",
+    "R_BUT_X",
+    "R_BUT_Y",
+    "R_BUT_SL",
+    "R_BUT_SR",
+    "R_SHOULDER",
+    "R_TRIGGER",
+    "R_HOME",
+    "R_PLUS",
+    "R_STICK"
+  };
 
-	for (int i = 0; i < 22; i++)
-	{
-		std::string jc_key = jckeys[i];
-		std::string xbox_key = keymap_config[jc_key].As<std::string>("");
-		if (xbox_key == "")
-			throw "Cannot find key: " + jc_key;
+  for (int i = 0; i < 22; i++)
+  {
+    std::string jc_key = jckeys[i];
+    std::string xbox_key = keymap_config[jc_key].As<std::string>("");
+    if (xbox_key == "")
+      throw "Cannot find key: " + jc_key;
 
-		btnkey_mappings[jc_key] = xbox_key;
-	}
+    btnkey_mappings[jc_key] = xbox_key;
+  }
 
-	for (auto item = btnkey_mappings.begin(); item != btnkey_mappings.end(); item++)
-	{
-		std::string jc_key = item->first;
-		std::string xbox_key = item->second;
+  for (auto item = btnkey_mappings.begin(); item != btnkey_mappings.end(); item++)
+  {
+    std::string jc_key = item->first;
+    std::string xbox_key = item->second;
 
-		auto jcbtn = string_to_joycon_button(jc_key);
-		std::string jcbtn_pos = get_jcbtn_pos(std::get<0>(jcbtn), std::get<1>(jcbtn));
-		jcbtn_mappings[jcbtn_pos] = jc_key;
+    auto jcbtn = string_to_joycon_button(jc_key);
+    std::string jcbtn_pos = get_jcbtn_pos(std::get<0>(jcbtn), std::get<1>(jcbtn));
+    jcbtn_mappings[jcbtn_pos] = jc_key;
 
-		if (xbox_key == "DISABLE" || xbox_key == "XUSB_GAMEPAD_LEFT_TRIGGER" || xbox_key == "XUSB_GAMEPAD_RIGHT_TRIGGER")
-		{
-			continue;
-		}
+    if (xbox_key == "DISABLE" || xbox_key == "XUSB_GAMEPAD_LEFT_TRIGGER" || xbox_key == "XUSB_GAMEPAD_RIGHT_TRIGGER")
+    {
+      continue;
+    }
 
-		XUSB_BUTTON xbox_button = string_to_xbox_button(xbox_key);
-		button_mappings[jcbtn_pos] = xbox_button;
-	}
+    XUSB_BUTTON xbox_button = string_to_xbox_button(xbox_key);
+    button_mappings[jcbtn_pos] = xbox_button;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -1572,18 +1572,18 @@ int main(int argc, char *argv[]) {
   
   hid_init();
 
-	try
-	{
-	  load_keymap_file();
-	}
-	catch (const std::exception& ex)
-	{
-		std::cout << "Cannot load file 'keymap.yaml'" << std::endl;
-		std::cout << "error massage: " << ex.what() << std::endl;
-		getchar();
-		return 0;
-	}
-  
+  try
+  {
+    load_keymap_file();
+  }
+  catch (const std::exception& ex)
+  {
+    std::cout << "Cannot load file 'keymap.yaml'" << std::endl;
+    std::cout << "error massage: " << ex.what() << std::endl;
+    getchar();
+    return 0;
+  }
+
   std::string name = argv[0];
   for (int i = 1; i < argc; ++i) {
 	  std::string arg = argv[i];
