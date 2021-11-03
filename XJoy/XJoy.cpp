@@ -1129,12 +1129,6 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 	std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
 	std::string xbox_key_name = btnkey_mappings[jc_key_name];
 
-	if (xbox_key_name == "")
-	{
-		std::cout << "Not found key: " << jc_key_name << std::endl;
-		return;
-	}
-
 	std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
 
 	if (xbox_key_name == "DISABLE") {
@@ -1149,21 +1143,14 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 		return;
 	}
 
-	try
-	{
-		XUSB_BUTTON xbox_key = button_mappings[jcbtn_pos];
-		char first_letter = jc_key_name[0];
+	XUSB_BUTTON xbox_key = button_mappings[jcbtn_pos];
+	char first_letter = jc_key_name[0];
 
-		if (first_letter == 'L') {
-			xbox->left_buttons = xbox->left_buttons | xbox_key;
-		}
-		else if (first_letter == 'R') {
-			xbox->right_buttons = xbox->right_buttons | xbox_key;
-		}
+	if (first_letter == 'L') {
+		xbox->left_buttons = xbox->left_buttons | xbox_key;
 	}
-	catch (const std::exception& ex)
-	{
-		std::cout << "error: " << ex.what() << std::endl;
+	else if (first_letter == 'R') {
+		xbox->right_buttons = xbox->right_buttons | xbox_key;
 	}
 }
 
