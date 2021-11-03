@@ -931,7 +931,7 @@ std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
 	int r = region;
 	int b = button;
 
-	std::string pos = r + "." + b;
+	std::string pos = std::to_string(r) + "." + std::to_string(b);
 	return pos;
 }
 
