@@ -181,9 +181,9 @@ enum JOYCON_BUTTON {
   R_ANALOG_NONE = 8
 };
 
-std::unordered_map<JOYCON_BUTTON, std::string> jcbtn_mappings;
+std::unordered_map<std::string, std::string> jcbtn_mappings;
 std::unordered_map<std::string, std::string> btnkey_mappings;
-std::unordered_map<JOYCON_BUTTON, XUSB_BUTTON> button_mappings;
+std::unordered_map<std::string, XUSB_BUTTON> button_mappings;
 
 std::tuple<JOYCON_REGION, JOYCON_BUTTON> string_to_joycon_button(std::string input) {
   if(input == "L_DPAD_LEFT") return std::make_tuple(LEFT_DPAD, L_DPAD_LEFT);
@@ -927,10 +927,18 @@ void process_stick(XUSB_REPORT* report, bool is_left, uint8_t a, uint8_t b, uint
   }
 }
 
+std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
+	int r = region;
+	int b = button;
+
+	std::string pos = r + "." + b;
+	return pos;
+}
+
 void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
   if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
 	std::cout << joycon_button_to_string(region, button) << std::endl;
-  auto got = button_mappings.find(button);
+  auto got = button_mappings.find(get_jcbtn_pos(region, button));
   if(got != button_mappings.end()) {
     XUSB_BUTTON target = got->second;
     switch (region) {
@@ -1117,7 +1125,8 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 	if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
 		return;
 
-	std::string jc_key_name = jcbtn_mappings[button];
+	std::string jcbtn_pos = get_jcbtn_pos(region, button);
+	std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
 	std::string xbox_key_name = btnkey_mappings[jc_key_name];
 
 	if (xbox_key_name == "")
@@ -1142,7 +1151,7 @@ void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
 
 	try
 	{
-		XUSB_BUTTON xbox_key = button_mappings[button];
+		XUSB_BUTTON xbox_key = button_mappings[jcbtn_pos];
 		char first_letter = jc_key_name[0];
 
 		if (first_letter == 'L') {
@@ -1557,8 +1566,9 @@ void load_keymap_file() {
 		std::string jc_key = item->first;
 		std::string xbox_key = item->second;
 
-		JOYCON_BUTTON jc_button = std::get<1>(string_to_joycon_button(jc_key));
-		jcbtn_mappings[jc_button] = jc_key;
+		auto jcbtn = string_to_joycon_button(jc_key);
+		std::string jcbtn_pos = get_jcbtn_pos(std::get<0>(jcbtn), std::get<1>(jcbtn));
+		jcbtn_mappings[jcbtn_pos] = jc_key;
 
 		if (xbox_key == "DISABLE" || xbox_key == "XUSB_GAMEPAD_LEFT_TRIGGER" || xbox_key == "XUSB_GAMEPAD_RIGHT_TRIGGER")
 		{
@@ -1566,7 +1576,7 @@ void load_keymap_file() {
 		}
 
 		XUSB_BUTTON xbox_button = string_to_xbox_button(xbox_key);
-		button_mappings[jc_button] = xbox_button;
+		button_mappings[jcbtn_pos] = xbox_button;
 	}
 }
 
