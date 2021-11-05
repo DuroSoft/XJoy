@@ -939,10 +939,10 @@ std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
 }
 
 void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
-  if(!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
-	std::cout << joycon_button_to_string(region, button) << std::endl;
+  if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
+    std::cout << joycon_button_to_string(region, button) << std::endl;
   auto got = button_mappings.find(get_jcbtn_pos(region, button));
-  if(got != button_mappings.end()) {
+  if (got != button_mappings.end()) {
     XUSB_BUTTON target = got->second;
     switch (region) {
     case LEFT_DPAD:
@@ -1162,7 +1162,7 @@ inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
 }
 
 inline void region_part(Xbox* xbox, unsigned char data, JOYCON_REGION region, JOYCON_BUTTON button) {
-  if(has_button(data, button))
+  if (has_button(data, button))
     process_button2(xbox, region, button);
 }
 
@@ -1210,8 +1210,9 @@ void process_right_joycon(Xbox* xbox) {
     offset2 = 1;
     shift = 1;
     process_stick(xbox->report, false, data[9], data[10], data[11]);
-  } else process_button2(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
-  region_part(xbox, data[1 + offset]>>(shift*3), RIGHT_BUTTONS, R_BUT_A);
+  }
+  else process_button2(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
+  region_part(xbox, data[1 + offset] >> (shift * 3), RIGHT_BUTTONS, R_BUT_A);
   region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_B);
   region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_X);
   region_part(xbox, data[1 + offset] << (shift * 3), RIGHT_BUTTONS, R_BUT_Y);
@@ -1571,9 +1572,9 @@ void load_keymap_file() {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   signal(SIGINT, exit_handler);
-  
+
   hid_init();
 
   try
