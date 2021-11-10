@@ -941,6 +941,42 @@ std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
 }
 
 void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
+
+  if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
+    return;
+
+  std::string jcbtn_pos = get_jcbtn_pos(region, button);
+  std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
+  std::string xbox_key_name = btnkey_mappings[jc_key_name];
+
+  std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
+
+  if (xbox_key_name == "DISABLE") {
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
+    xbox->report->bLeftTrigger = 255;
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
+    xbox->report->bRightTrigger = 255;
+    return;
+  }
+
+  XUSB_BUTTON xbox_key = button2_mappings[jcbtn_pos];
+  char first_letter = jc_key_name[0];
+
+  if (first_letter == 'L') {
+    xbox->left_buttons = xbox->left_buttons | xbox_key;
+  }
+  else if (first_letter == 'R') {
+    xbox->right_buttons = xbox->right_buttons | xbox_key;
+  }
+  return;
+
+  // The following codes are obsolete
+  // Please view PR #83 for the reason why they were not removed
+
   if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
     std::cout << joycon_button_to_string(region, button) << std::endl;
   auto got = button_mappings.find(button);
@@ -1126,47 +1162,13 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
   }
 }
 
-void process_button2(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
-  if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
-    return;
-
-  std::string jcbtn_pos = get_jcbtn_pos(region, button);
-  std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
-  std::string xbox_key_name = btnkey_mappings[jc_key_name];
-
-  std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
-
-  if (xbox_key_name == "DISABLE") {
-    return;
-  }
-  if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
-    xbox->report->bLeftTrigger = 255;
-    return;
-  }
-  if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
-    xbox->report->bRightTrigger = 255;
-    return;
-  }
-
-  XUSB_BUTTON xbox_key = button2_mappings[jcbtn_pos];
-  char first_letter = jc_key_name[0];
-
-  if (first_letter == 'L') {
-    xbox->left_buttons = xbox->left_buttons | xbox_key;
-  }
-  else if (first_letter == 'R') {
-    xbox->right_buttons = xbox->right_buttons | xbox_key;
-  }
-}
-
 inline bool has_button(unsigned char data, JOYCON_BUTTON button) {
   return !!(data & button);
 }
 
 inline void region_part(Xbox* xbox, unsigned char data, JOYCON_REGION region, JOYCON_BUTTON button) {
   if (has_button(data, button))
-    // process_button(xbox, region, button);
-    process_button2(xbox, region, button);
+    process_button(xbox, region, button);
 }
 
 void process_left_joycon(Xbox* xbox) {
@@ -1184,8 +1186,7 @@ void process_left_joycon(Xbox* xbox) {
     process_stick(xbox->report, true, data[6], data[7], data[8]);
   }
   else {
-    // process_button(xbox, LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
-    process_button2(xbox, LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
+    process_button(xbox, LEFT_ANALOG, (JOYCON_BUTTON)data[3]);
   }
   region_part(xbox, data[1 + offset * 2] << shift, LEFT_DPAD, L_DPAD_UP);
   region_part(xbox, data[1 + offset * 2] << shift, LEFT_DPAD, L_DPAD_DOWN);
@@ -1215,8 +1216,7 @@ void process_right_joycon(Xbox* xbox) {
     shift = 1;
     process_stick(xbox->report, false, data[9], data[10], data[11]);
   }
-  // else process_button(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
-  else process_button2(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
+  else process_button(xbox, RIGHT_ANALOG, (JOYCON_BUTTON)data[3]);
   region_part(xbox, data[1 + offset] >> (shift * 3), RIGHT_BUTTONS, R_BUT_A);
   region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_B);
   region_part(xbox, data[1 + offset], RIGHT_BUTTONS, R_BUT_X);
