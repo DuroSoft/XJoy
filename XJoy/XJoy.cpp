@@ -974,8 +974,8 @@ void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
   }
   return;
 
-  // The following codes are obsolete
-  // Please view PR #83 for the reason why they were not removed
+  // The following code is obsolete
+  // Please view PR #83 for the reason why it was not removed
 
   if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
     std::cout << joycon_button_to_string(region, button) << std::endl;
