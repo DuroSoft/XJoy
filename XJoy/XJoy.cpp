@@ -942,6 +942,40 @@ std::string get_jcbtn_pos(JOYCON_REGION region, JOYCON_BUTTON button) {
 }
 
 void process_button(Xbox* xbox, JOYCON_REGION region, JOYCON_BUTTON button) {
+  if (region == LEFT_ANALOG || region == RIGHT_ANALOG)
+    return;
+
+  std::string jcbtn_pos = get_jcbtn_pos(region, button);
+  std::string jc_key_name = jcbtn_mappings[jcbtn_pos];
+  std::string xbox_key_name = btnkey_mappings[jc_key_name];
+
+  std::cout << jc_key_name << ": " << xbox_key_name << std::endl;
+
+  if (xbox_key_name == "DISABLE") {
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_LEFT_TRIGGER") {
+    xbox->report->bLeftTrigger = 255;
+    return;
+  }
+  if (xbox_key_name == "XUSB_GAMEPAD_RIGHT_TRIGGER") {
+    xbox->report->bRightTrigger = 255;
+    return;
+  }
+
+  XUSB_BUTTON xbox_key = button2_mappings[jcbtn_pos];
+  char first_letter = jc_key_name[0];
+
+  if (first_letter == 'L') {
+    xbox->left_buttons = xbox->left_buttons | xbox_key;
+  }
+  else if (first_letter == 'R') {
+    xbox->right_buttons = xbox->right_buttons | xbox_key;
+  }
+  return;
+
+  // The following code is obsolete
+
   if (!((region == LEFT_ANALOG && button == L_ANALOG_NONE) || (region == RIGHT_ANALOG && button == R_ANALOG_NONE)))
     std::cout << joycon_button_to_string(region, button) << std::endl;
   auto got = button_mappings.find(button);
