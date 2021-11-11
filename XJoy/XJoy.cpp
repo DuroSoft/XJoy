@@ -183,6 +183,11 @@ enum JOYCON_BUTTON {
 
 std::unordered_map<JOYCON_BUTTON, XUSB_BUTTON> button_mappings;
 
+std::unordered_map<std::string, std::string> jcbtn_mappings;
+std::unordered_map<std::string, std::string> btnkey_mappings;
+std::unordered_map<std::string, XUSB_BUTTON> button2_mappings;
+
+
 std::tuple<JOYCON_REGION, JOYCON_BUTTON> string_to_joycon_button(std::string input) {
   if (input == "L_DPAD_LEFT") return std::make_tuple(LEFT_DPAD, L_DPAD_LEFT);
   if (input == "L_DPAD_DOWN") return std::make_tuple(LEFT_DPAD, L_DPAD_DOWN);
